@@ -882,16 +882,36 @@
 			padding: 8px;
 			margin: -8px -8px -8px 0;
 		}
+		/* Home: intro uses full width below nav (no 72% column) */
+		.home-intro {
+			padding-left: max(var(--px), env(safe-area-inset-left, 0px));
+			padding-right: max(var(--px), env(safe-area-inset-right, 0px));
+		}
+		.home-intro p {
+			max-width: none;
+			width: 100%;
+		}
 		.h-panel,
 		.w-panel {
 			width: 80vw;
 		}
+		/* Case study: drop desktop left gutter (16% + px); full-width copy */
 		.work-top {
 			grid-template-columns: 1fr;
-			padding-top: 24px;
+			padding: 24px max(var(--px), env(safe-area-inset-right, 0px)) 18px
+				max(var(--px), env(safe-area-inset-left, 0px));
+			gap: 14px 0;
+		}
+		.work-desc,
+		.work-meta {
+			grid-column: 1;
+		}
+		.work-desc {
+			max-width: none;
 		}
 		.work-meta {
 			text-align: left;
+			white-space: normal;
 		}
 		.about-body {
 			grid-template-columns: 1fr;
