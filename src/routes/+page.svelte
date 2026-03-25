@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	/** Optional clip per case-study panel: MP4/WebM in `/static/…` or YouTube / Vimeo IDs. */
 	type WorkPanelVideo =
@@ -11,6 +11,8 @@
 		label: string;
 		video?: WorkPanelVideo;
 		image?: string;
+		/** Full-bleed slides; horizontal scroll + snap inside the panel. */
+		images?: string[];
 	};
 
 	type ProjectDef = {
@@ -28,10 +30,7 @@
 					label: 'Discovery',
 					video: { type: 'file', src: '/assets/ux-maturity-discovery.mov' }
 				},
-				{
-					label: 'Frameworks',
-					image: '/assets/kwit-first-design-sprint.png'
-				},
+				{ label: 'Frameworks' },
 				{ label: 'Components' },
 				{ label: 'Rituals' }
 			]
@@ -54,8 +53,24 @@
 					label: 'Research',
 					video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' }
 				},
-				{ label: 'Concept' },
-				{ label: 'UX Design' },
+				{
+					label: 'Concept',
+					images: [
+						'/assets/sobero-icons-default.png',
+						'/assets/sobero-icons-selected.png',
+						'/assets/sobero-illustrations.png',
+						'/assets/sobero-scenes.png',
+						'/assets/sobero-pictograms.png'
+					]
+				},
+				{
+					label: 'UX Design',
+					images: [
+						'/assets/sobero-strategy-01.png',
+						'/assets/sobero-strategy-02.png',
+						'/assets/sobero-strategy-03.png'
+					]
+				},
 				{ label: 'Launch' }
 			]
 		},
@@ -116,6 +131,54 @@
 		}
 	}
 
+	function carouselStepPx(track: HTMLElement): number {
+		const img = track.querySelector('.w-panel-carousel-img') as HTMLElement | null;
+		if (!img) return track.clientWidth;
+		const gap = parseFloat(getComputedStyle(track).gap || '0') || 0;
+		return img.offsetWidth + gap;
+	}
+
+	function syncCarouselArrows(track: HTMLElement) {
+		const wrap = track.closest('.w-panel-carousel');
+		if (!wrap) return;
+		const prev = wrap.querySelector('.w-panel-carousel-btn--prev') as HTMLButtonElement | null;
+		const next = wrap.querySelector('.w-panel-carousel-btn--next') as HTMLButtonElement | null;
+		if (!prev || !next) return;
+		const max = Math.max(0, track.scrollWidth - track.clientWidth);
+		const sl = track.scrollLeft;
+		prev.disabled = sl <= 1;
+		next.disabled = sl >= max - 1;
+	}
+
+	function carouselStep(e: MouseEvent, dir: -1 | 1) {
+		e.preventDefault();
+		e.stopPropagation();
+		const btn = e.currentTarget as HTMLElement;
+		const wrap = btn.closest('.w-panel-carousel');
+		const track = wrap?.querySelector('.w-panel-images') as HTMLElement | null;
+		if (!track) return;
+		const smooth =
+			typeof window !== 'undefined' &&
+			!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const step = carouselStepPx(track);
+		track.scrollBy({ left: dir * step, behavior: smooth ? 'smooth' : 'instant' });
+		const sync = () => syncCarouselArrows(track);
+		sync();
+		track.addEventListener('scrollend', sync, { once: true });
+		window.setTimeout(sync, 450);
+	}
+
+	$effect(() => {
+		void activePage;
+		void currentProject;
+		if (activePage !== 'work') return;
+		tick().then(() => {
+			document.querySelectorAll('.w-panel-images').forEach((node) => {
+				syncCarouselArrows(node as HTMLElement);
+			});
+		});
+	});
+
 	function dragScroll(el: HTMLElement) {
 		let down = false;
 		let moved = false;
@@ -123,8 +186,11 @@
 		let sl = 0;
 		let tx = 0;
 		let ts = 0;
+		let activeScroller: HTMLElement | null = null;
 
 		const onDown = (e: MouseEvent) => {
+			if ((e.target as HTMLElement).closest('.w-panel-carousel-btn')) return;
+			activeScroller = el;
 			down = true;
 			moved = false;
 			sx = e.pageX;
@@ -133,13 +199,14 @@
 			e.preventDefault();
 		};
 		const onMove = (e: MouseEvent) => {
-			if (!down) return;
+			if (!down || !activeScroller) return;
 			const dx = e.pageX - sx;
 			if (Math.abs(dx) > 3) moved = true;
-			el.scrollLeft = sl - dx * 1.4;
+			activeScroller.scrollLeft = sl - dx * 1.4;
 		};
 		const onUp = () => {
 			down = false;
+			activeScroller = null;
 			el.classList.remove('grabbing');
 		};
 		const onClick = (e: MouseEvent) => {
@@ -150,14 +217,21 @@
 		};
 		const onWheel = (e: WheelEvent) => {
 			e.preventDefault();
-			el.scrollLeft += (Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * 1.5;
+			el.scrollLeft +=
+				(Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * 1.5;
 		};
 		const onTouchStart = (e: TouchEvent) => {
+			if ((e.target as HTMLElement).closest('.w-panel-carousel-btn')) {
+				activeScroller = null;
+				return;
+			}
+			activeScroller = el;
 			tx = e.touches[0].pageX;
 			ts = el.scrollLeft;
 		};
 		const onTouchMove = (e: TouchEvent) => {
-			el.scrollLeft = ts - (e.touches[0].pageX - tx) * 1.2;
+			if (!activeScroller) return;
+			activeScroller.scrollLeft = ts - (e.touches[0].pageX - tx) * 1.2;
 		};
 
 		el.addEventListener('mousedown', onDown);
@@ -443,10 +517,71 @@
 				<div class="w-panel">
 					<div
 						class="w-panel-bg"
-						class:w-panel-bg--video={panel.video || panel.image}
-						class:w-panel-bg--placeholder={!panel.video && !panel.image}
+						class:w-panel-bg--video={panel.video ||
+							panel.image ||
+							(panel.images && panel.images.length > 0)}
+						class:w-panel-bg--placeholder={!panel.video &&
+							!panel.image &&
+							!(panel.images && panel.images.length > 0)}
 					>
-						{#if panel.image}
+						{#if panel.images && panel.images.length > 0}
+							<div class="w-panel-carousel">
+								<button
+									type="button"
+									class="w-panel-carousel-btn w-panel-carousel-btn--prev"
+									aria-label="Previous image"
+									onclick={(e) => carouselStep(e, -1)}
+								>
+									<svg class="w-panel-carousel-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+										<path
+											d="M14.5 17.5 8 12l6.5-5.5"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											vector-effect="non-scaling-stroke"
+										/>
+									</svg>
+								</button>
+								<div
+									class="w-panel-images"
+									role="group"
+									aria-roledescription="carousel"
+									aria-label={`${panel.label} — use the arrows to move between images`}
+									title="Use the side arrows to change image"
+									onscroll={(e) => syncCarouselArrows(e.currentTarget as HTMLElement)}
+								>
+									{#each panel.images as src, i}
+										<img
+											class="w-panel-carousel-img"
+											{src}
+											alt="{panel.label} {i + 1}"
+											loading={i === 0 ? 'eager' : 'lazy'}
+											draggable="false"
+										/>
+									{/each}
+								</div>
+								<button
+									type="button"
+									class="w-panel-carousel-btn w-panel-carousel-btn--next"
+									aria-label="Next image"
+									onclick={(e) => carouselStep(e, 1)}
+								>
+									<svg class="w-panel-carousel-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+										<path
+											d="M9.5 17.5 16 12l-6.5-5.5"
+											fill="none"
+											stroke="currentColor"
+											stroke-width="1.5"
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											vector-effect="non-scaling-stroke"
+										/>
+									</svg>
+								</button>
+							</div>
+						{:else if panel.image}
 							<img
 								class="w-panel-media w-panel-media--image"
 								src={panel.image}
@@ -853,6 +988,7 @@
 	.w-panel-bg--video {
 		background: #f6f6f6;
 	}
+	.w-panel-bg--video:has(> iframe.w-panel-media),
 	.w-panel-bg--video:has(> video.w-panel-media) {
 		display: flex;
 		align-items: center;
@@ -885,7 +1021,104 @@
 		object-fit: cover;
 		pointer-events: none;
 	}
-	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label {
+	.w-panel-carousel {
+		position: absolute;
+		inset: 0;
+		z-index: 1;
+		pointer-events: none;
+	}
+	/* Icon-only control: chevron only, no circular chrome */
+	.w-panel-carousel-btn {
+		position: absolute;
+		top: 50%;
+		z-index: 4;
+		transform: translateY(-50%);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 44px;
+		min-height: 44px;
+		padding: 10px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--black);
+		cursor: pointer;
+		pointer-events: auto;
+		transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.33, 0, 0.25, 1);
+		-webkit-tap-highlight-color: transparent;
+	}
+	.w-panel-carousel-btn:focus-visible {
+		outline: 2px solid var(--black);
+		outline-offset: 3px;
+	}
+	.w-panel-carousel-btn__icon {
+		width: 26px;
+		height: 26px;
+		display: block;
+		opacity: 0.92;
+		/* Thin light halo so portfolio black stays legible on dark slides */
+		filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95))
+			drop-shadow(0 0 2px rgba(255, 255, 255, 0.45));
+		transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.33, 0, 0.25, 1);
+	}
+	.w-panel-carousel-btn:disabled {
+		cursor: default;
+		pointer-events: none;
+	}
+	.w-panel-carousel-btn:disabled .w-panel-carousel-btn__icon {
+		opacity: 0.22;
+		filter: none;
+	}
+	.w-panel-carousel-btn--prev {
+		left: 6px;
+	}
+	.w-panel-carousel-btn--next {
+		right: 6px;
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.w-panel-carousel-btn:hover:not(:disabled) .w-panel-carousel-btn__icon {
+			opacity: 1;
+			transform: scale(1.08);
+		}
+		.w-panel-carousel-btn:active:not(:disabled) .w-panel-carousel-btn__icon {
+			transform: scale(1.02);
+		}
+	}
+	.w-panel-images {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		flex-flow: row nowrap;
+		gap: 0;
+		overflow-x: hidden;
+		overflow-y: hidden;
+		scroll-snap-type: x mandatory;
+		scrollbar-width: none;
+		overscroll-behavior-x: none;
+		touch-action: manipulation;
+		pointer-events: none;
+	}
+	.w-panel-images::-webkit-scrollbar {
+		display: none;
+	}
+	.w-panel-carousel-img {
+		flex: 0 0 100%;
+		width: 100%;
+		min-width: 100%;
+		height: 100%;
+		object-fit: contain;
+		object-position: center;
+		scroll-snap-align: start;
+		scroll-snap-stop: always;
+		pointer-events: none;
+		user-select: none;
+		display: block;
+		transform: scale(1);
+		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
+	}
+	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label,
+	.w-panel-bg--video:has(.w-panel-images) .w-panel-label {
 		color: #fff;
 		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 	}
@@ -893,17 +1126,20 @@
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img {
 			transform: scale(1.06);
 		}
-		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media {
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media,
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-carousel-img {
 			transform: scale(1.06);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.h-panel-bg img,
-		.w-panel-bg .w-panel-media {
+		.w-panel-bg .w-panel-media,
+		.w-panel-bg .w-panel-carousel-img {
 			transition: none;
 		}
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img,
-		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media {
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media,
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-carousel-img {
 			transform: none;
 		}
 	}
