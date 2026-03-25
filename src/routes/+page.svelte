@@ -34,9 +34,9 @@
 		}
 	};
 
-	let activePage = 'home';
-	let currentProject = 'UX Maturity';
-	let mobileOpen = false;
+	let activePage = $state('home');
+	let currentProject = $state('UX Maturity');
+	let mobileOpen = $state(false);
 
 	function show(id: string, project: string | null = null) {
 		activePage = id;
@@ -45,6 +45,11 @@
 
 	function closeMob() {
 		mobileOpen = false;
+	}
+
+	function mobNavAbout() {
+		show('about');
+		closeMob();
 	}
 
 	function dragScroll(el: HTMLElement) {
@@ -126,29 +131,47 @@
 <svelte:head>
 	<title>Lara Perez</title>
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
-		href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Quadrant+Text:ital,wght@0,400;1,400&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap"
 		rel="stylesheet"
+	/>
+	<link
+		rel="preload"
+		href="/fonts/quadrant-text-mono-regular.woff2"
+		as="font"
+		type="font/woff2"
+		crossorigin="anonymous"
 	/>
 </svelte:head>
 
-<header>
+<svelte:window
+	onkeydown={(e) => {
+		if (e.key === 'Escape' && mobileOpen) closeMob();
+	}}
+/>
+
+<header class:menu-open={mobileOpen}>
 	<div class="nav-row">
 		<div class="nav-brand">
-			<button onclick={() => show('home')}>Lara Perez</button>
+			<button type="button" onclick={() => show('home')}>Lara Perez</button>
 		</div>
 
 		<div class="nav-work" class:sub-visible={activePage === 'work'}>
-			<button class="nav-work-label" class:active={activePage === 'work'} onclick={() => show('home')}
-				>Work</button
+			<button
+				type="button"
+				class="nav-work-label"
+				class:active={activePage === 'work'}
+				onclick={() => show('home')}
 			>
+				Work
+			</button>
 			<div class="nav-sub-links">
 				{#each Object.keys(PROJECTS) as proj}
 					<button
-						class:current={currentProject === proj}
-						onclick={() => {
-							show('work', proj);
-						}}
+						type="button"
+						class:current={activePage === 'work' && currentProject === proj}
+						onclick={() => show('work', proj)}
 					>
 						{proj}
 					</button>
@@ -157,38 +180,70 @@
 		</div>
 
 		<nav class="nav-right">
-			<button onclick={() => show('about')}>About</button>
-			<button onclick={() => show('contact')}>Contact</button>
+			<button type="button" onclick={() => show('about')}>About</button>
+			<a class="nav-say-hola" href="mailto:lperezmolines@gmail.com">Say Hola</a>
 		</nav>
 
-		<button class="nav-index" onclick={() => (mobileOpen = true)}>Index</button>
+		<button
+			type="button"
+			class="nav-index"
+			aria-expanded={mobileOpen}
+			aria-controls="site-mob-menu"
+			onclick={() => (mobileOpen = !mobileOpen)}
+		>
+			{mobileOpen ? 'Close' : 'Index'}
+		</button>
+	</div>
+
+	<!-- Arnold-style full-screen sheet: primary case links (24px), secondary nav (15px), footer -->
+	<div
+		id="site-mob-menu"
+		class="mob-menu"
+		class:open={mobileOpen}
+		role="dialog"
+		aria-modal="true"
+		aria-label="Site menu"
+	>
+		<div class="mob-menu-inner">
+			<!-- Arnold: pt-12 text-24 primary stack -->
+			<nav class="mob-primary" aria-label="Case studies">
+				{#each Object.keys(PROJECTS) as proj}
+					<div class="mob-primary-row">
+						<button
+							type="button"
+							class="mob-primary-link"
+							class:current={currentProject === proj && activePage === 'work'}
+							onclick={() => {
+								show('work', proj);
+								closeMob();
+							}}
+						>
+							{proj}
+						</button>
+					</div>
+				{/each}
+			</nav>
+			<!-- Flexible gap between primary and secondary (Arnold menu layout) -->
+			<div class="mob-menu-spacer" aria-hidden="true"></div>
+			<!-- Arnold-style secondary block — About + contact (case studies are primary above) -->
+			<div class="mob-secondary">
+				<div class="mob-secondary-row">
+					<button type="button" class="mob-secondary-link" onclick={mobNavAbout}>About</button>
+				</div>
+				<div class="mob-secondary-row">
+					<a
+						class="mob-secondary-link"
+						href="mailto:lperezmolines@gmail.com"
+						onclick={() => closeMob()}
+					>
+						Say Hola
+					</a>
+				</div>
+			</div>
+			<div class="mob-foot">Barcelona, Spain<br />Available for projects</div>
+		</div>
 	</div>
 </header>
-
-<div class="mob-menu" class:open={mobileOpen}>
-	<button class="mob-close" onclick={closeMob}>Close</button>
-	<div class="mob-links">
-		<button
-			onclick={() => {
-				show('home');
-				closeMob();
-			}}>Work</button
-		>
-		<button
-			onclick={() => {
-				show('about');
-				closeMob();
-			}}>About</button
-		>
-		<button
-			onclick={() => {
-				show('contact');
-				closeMob();
-			}}>Contact</button
-		>
-	</div>
-	<div class="mob-foot">Barcelona, Spain<br />Available for projects</div>
-</div>
 
 <div id="page-home" class="page" class:active={activePage === 'home'}>
 	<div class="home-intro">
@@ -284,10 +339,10 @@
 			</p>
 			<p>Based in Barcelona. Currently open to new projects.</p>
 		</div>
-		<div>
+		<div class="about-skills">
 			<div class="about-info-block">
 				<div class="about-info-title">Brand Strategy</div>
-				<div class="about-info-detail">Visual Identity<br />Naming and Positioning<br />Brand Guidelines</div>
+				<div class="about-info-detail">Visual Identity<br />Naming &amp; Positioning<br />Brand Guidelines</div>
 			</div>
 			<div class="about-info-block">
 				<div class="about-info-title">Design</div>
@@ -301,21 +356,16 @@
 	</div>
 </div>
 
-<div id="page-contact" class="page" class:active={activePage === 'contact'}>
-	<h1>Get in<br /><em>touch.</em></h1>
-	<div class="contact-body">
-		<div class="contact-portrait"><span class="about-ph">YN</span></div>
-		<div>
-			<div class="c-link"><a href="mailto:hello@example.com">hello@example.com</a><span>→</span></div>
-			<div class="c-link"><a href="https://instagram.com/" target="_blank" rel="noreferrer">Instagram</a><span>→</span></div>
-			<div class="c-link"><a href="https://linkedin.com/" target="_blank" rel="noreferrer">LinkedIn</a><span>→</span></div>
-			<div class="c-link"><a href="https://read.cv/" target="_blank" rel="noreferrer">Read.cv</a><span>→</span></div>
-			<div class="contact-location">Barcelona, Spain<br />Available for new projects</div>
-		</div>
-	</div>
-</div>
-
 <style>
+	/* Matches arnoldcircusstool.com .font-serif / quadrant-text-mono. Replace woff2 with your licensed file from Matter of Sorts if publishing. */
+	@font-face {
+		font-family: 'Quadrant Text Mono';
+		src: url('/fonts/quadrant-text-mono-regular.woff2') format('woff2');
+		font-weight: 400;
+		font-style: normal;
+		font-display: swap;
+	}
+
 	:global(*),
 	:global(*::before),
 	:global(*::after) {
@@ -328,10 +378,20 @@
 		--white: #ffffff;
 		--cream: #f6f6f6;
 		--black: #0f0e0c;
-		--gray: #999997;
+		/* Arnold arnoldcircusstool.com text-gray */
+		--gray: #aaaaaa;
 		--px: 18px;
+		--section-spacing: 18px;
 		--nav-h: 38px;
 		--top-gap: 56px;
+		/* quadrant-text-mono, serif (Arnold product-page / editorial stack) */
+		--font-body: 'Quadrant Text Mono', ui-serif, Georgia, 'Times New Roman', serif;
+		/* Nav: neo-grotesk (Arnold uses die-grotesk-b; Inter is a consistent web substitute) */
+		--font-nav: 'Inter', 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+	}
+
+	:global(html) {
+		-webkit-tap-highlight-color: transparent;
 	}
 
 	:global(html),
@@ -340,9 +400,13 @@
 		overflow: hidden;
 		background: var(--white);
 		color: var(--black);
-		font-family: 'Quadrant Text', 'Courier Prime', monospace;
+		font-family: var(--font-body);
 		font-size: 14px;
-		line-height: 1.5;
+		line-height: 1.3;
+		font-weight: 400;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+		text-rendering: optimizeLegibility;
 	}
 
 	button {
@@ -351,20 +415,25 @@
 		cursor: pointer;
 		color: inherit;
 		padding: 0;
-		font-family: 'Quadrant Text', 'Courier Prime', monospace;
+		font-family: inherit;
 		font-size: inherit;
-		font-weight: 400;
+		font-weight: inherit;
 	}
 
-	header button,
-	.nav-brand button,
-	.nav-sub-links button,
-	.nav-right button,
-	.nav-index,
-	.nav-work-label {
-		font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif !important;
+	/*
+	 * Only the top bar row — not buttons inside .mob-menu (also under <header>).
+	 * Limit to .nav-row so sheet buttons under <header> keep Quadrant Text Mono.
+	 */
+	.nav-row :is(button, a) {
+		font-family: var(--font-nav) !important;
 		font-size: 13px !important;
 		font-weight: 600 !important;
+		line-height: 1.3 !important;
+		letter-spacing: 0 !important;
+		font-synthesis: none;
+		font-feature-settings:
+			'liga' 1,
+			'kern' 1;
 	}
 
 	header {
@@ -377,19 +446,36 @@
 		z-index: 400;
 		padding: 0 var(--px);
 		display: flex;
-		align-items: center;
+		flex-direction: column;
+		align-items: stretch;
+		pointer-events: auto;
+		isolation: isolate;
+		touch-action: manipulation;
+	}
+
+	header.menu-open {
+		z-index: 501;
 	}
 
 	.nav-row {
 		width: 100%;
+		flex-shrink: 0;
 		display: flex;
 		align-items: center;
+		min-height: var(--nav-h);
+	}
+	/* Keep Index / brand above full-screen menu (fixed child stacks inside header). */
+	header.menu-open .nav-row {
+		position: relative;
+		z-index: 2;
+		background: var(--white);
 	}
 	.nav-brand {
 		flex: 0 0 16%;
 	}
 	.nav-brand button:hover,
 	.nav-right button:hover,
+	.nav-right a.nav-say-hola:hover,
 	.nav-sub-links button:hover,
 	.nav-work-label:hover {
 		opacity: 0.5;
@@ -403,22 +489,36 @@
 	.nav-work-label.active {
 		color: var(--black);
 	}
+	/* Touch / coarse pointer: project links stay visible when the work nav is shown. */
 	.nav-sub-links {
 		display: flex;
 		gap: 20px;
 		margin-left: 20px;
-		opacity: 0;
-		pointer-events: none;
+		opacity: 1;
+		pointer-events: auto;
 		transition: opacity 0.15s;
 		white-space: nowrap;
 	}
-	.nav-work:hover .nav-sub-links,
-	.nav-work.sub-visible .nav-sub-links {
-		opacity: 1;
-		pointer-events: auto;
+	/* Desktop + mouse: hide case-study links until Work row hover, work page, or focus inside. */
+	@media (min-width: 801px) and (hover: hover) and (pointer: fine) {
+		.nav-sub-links {
+			opacity: 0;
+			pointer-events: none;
+		}
+		.nav-work:hover .nav-sub-links,
+		.nav-work.sub-visible .nav-sub-links,
+		.nav-work:focus-within .nav-sub-links {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+	.nav-sub-links button {
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.nav-sub-links button.current {
 		text-decoration: underline;
+		text-decoration-thickness: 1px;
 		text-underline-offset: 3px;
 	}
 	.nav-right {
@@ -455,9 +555,17 @@
 		padding: var(--top-gap) var(--px) 24px;
 	}
 	.home-intro p {
-		font-size: clamp(1rem, 1.25vw, 1.15rem);
-		line-height: 1.85;
+		font-family: var(--font-body);
+		font-size: clamp(1.0625rem, 1.52vw, 1.25rem);
+		line-height: 30px;
 		max-width: 72%;
+		font-weight: 500;
+		letter-spacing: -0.02em;
+	}
+	@media (min-width: 1024px) {
+		.home-intro p {
+			letter-spacing: -0.04em;
+		}
 	}
 	.chip {
 		display: inline;
@@ -467,8 +575,7 @@
 		white-space: nowrap;
 	}
 
-	.home-strip,
-	.work-strip {
+	.home-strip {
 		flex: 1;
 		min-height: 0;
 		overflow-x: auto;
@@ -476,6 +583,16 @@
 		scrollbar-width: none;
 		display: flex;
 		padding-left: var(--px);
+		cursor: grab;
+	}
+	.work-strip {
+		display: flex;
+		height: 100%;
+		overflow-x: auto;
+		overflow-y: hidden;
+		scrollbar-width: none;
+		padding-left: var(--px);
+		padding-bottom: var(--px);
 		cursor: grab;
 	}
 	.home-strip::-webkit-scrollbar,
@@ -513,29 +630,40 @@
 		color: rgba(0, 0, 0, 0.07);
 		letter-spacing: -0.05em;
 		line-height: 1;
+		user-select: none;
+		pointer-events: none;
 	}
 
 	#page-work {
 		display: flex;
 		flex-direction: column;
+		font-family: var(--font-body);
+		font-size: 14px;
+		line-height: 1.3;
 	}
 	.work-top {
+		flex-shrink: 0;
 		display: grid;
 		grid-template-columns: 1fr auto;
 		padding: var(--top-gap) var(--px) 18px calc(16% + var(--px));
 		gap: 0 20px;
+		align-items: start;
 	}
 	.work-top-spacer {
 		display: none;
 	}
 	.work-desc {
-		font-size: 13px;
-		line-height: 1.75;
+		grid-column: 1;
+		font-size: 14px;
+		line-height: 1.3;
+		font-weight: 400;
 		max-width: 480px;
 	}
 	.work-meta {
-		font-size: 13px;
-		line-height: 1.75;
+		grid-column: 2;
+		font-size: 14px;
+		line-height: 1.3;
+		font-weight: 400;
 		text-align: right;
 		white-space: nowrap;
 	}
@@ -553,19 +681,26 @@
 		transform: translateY(-50%);
 		text-align: center;
 		font-size: clamp(4rem, 15vh, 13rem);
+		font-weight: 400;
+		line-height: 1;
+		white-space: nowrap;
 		pointer-events: none;
 		z-index: 10;
 		letter-spacing: -0.015em;
+	}
+	.w-panel {
+		position: relative;
+		z-index: 1;
 	}
 	.w-panel-label {
 		position: absolute;
 		bottom: 12px;
 		left: 14px;
-		font-size: 13px;
+		font-size: 14px;
+		pointer-events: none;
 	}
 
-	#page-about,
-	#page-contact {
+	#page-about {
 		overflow-y: auto;
 		padding: var(--top-gap) var(--px) var(--px);
 	}
@@ -576,13 +711,23 @@
 		letter-spacing: -0.02em;
 		margin-bottom: 40px;
 	}
+	#page-about h1 {
+		font-family: var(--font-body);
+		letter-spacing: -0.02em;
+	}
 	.about-body {
 		display: grid;
 		grid-template-columns: 40vw 1fr 1fr;
 		gap: 40px;
+		align-items: start;
+		font-family: var(--font-body);
+		font-size: 14px;
+		line-height: 1.3;
 	}
-	.about-portrait,
-	.contact-portrait {
+	.about-skills {
+		margin-top: 4px;
+	}
+	.about-portrait {
 		background: var(--cream);
 		aspect-ratio: 3 / 4;
 		display: flex;
@@ -592,9 +737,11 @@
 	.about-ph {
 		font-size: clamp(5rem, 14vw, 14rem);
 		color: rgba(0, 0, 0, 0.06);
+		letter-spacing: -0.05em;
+		user-select: none;
 	}
 	.about-bio p {
-		font-size: clamp(0.85rem, 1.1vw, 1rem);
+		font-size: clamp(0.8125rem, 1.04vw, 0.9375rem);
 		line-height: 1.85;
 		margin-bottom: 1.2em;
 	}
@@ -602,7 +749,8 @@
 		margin-bottom: 20px;
 	}
 	.about-info-title {
-		font-size: clamp(1rem, 1.4vw, 1.3rem);
+		font-size: clamp(0.9375rem, 1.28vw, 1.1875rem);
+		font-weight: 400;
 		margin-bottom: 3px;
 	}
 	.about-info-detail {
@@ -610,70 +758,112 @@
 		color: var(--gray);
 		line-height: 1.75;
 	}
-	.contact-body {
-		display: grid;
-		grid-template-columns: 40vw 1fr;
-		gap: 40px;
-	}
-	.c-link {
-		display: flex;
-		justify-content: space-between;
-		padding: 14px 0;
-		border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-	}
-	.c-link:first-child {
-		border-top: 1px solid rgba(0, 0, 0, 0.1);
-	}
-	.c-link:hover {
-		opacity: 0.45;
-	}
-	.c-link a {
-		font-size: clamp(1rem, 1.8vw, 1.5rem);
-		color: inherit;
+	.nav-right a.nav-say-hola {
 		text-decoration: none;
-	}
-	.contact-location {
-		margin-top: 24px;
-		font-size: 13px;
-		color: var(--gray);
-		line-height: 1.9;
+		color: inherit;
 	}
 
+	/* Arnold-style mobile sheet: full viewport, opacity transition, text-24 primary / body secondary */
 	.mob-menu {
-		display: none;
 		position: fixed;
 		inset: 0;
+		z-index: 1;
 		background: var(--white);
-		z-index: 399;
-		padding: var(--px);
-		flex-direction: column;
-		justify-content: space-between;
+		visibility: hidden;
+		opacity: 0;
+		pointer-events: none;
+		transition:
+			opacity 0.4s ease,
+			visibility 0s linear 0.4s;
+		-webkit-overflow-scrolling: touch;
+		overflow-y: auto;
 	}
 	.mob-menu.open {
-		display: flex;
+		visibility: visible;
+		opacity: 1;
+		pointer-events: auto;
+		transition: opacity 0.4s ease;
 	}
-	.mob-close {
-		position: absolute;
-		top: 12px;
-		right: var(--px);
-		color: var(--gray);
-	}
-	.mob-links {
-		padding-top: 60px;
+	.mob-menu-inner {
+		min-height: 100dvh;
+		min-height: 100vh;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		font-size: clamp(2rem, 9vw, 4rem);
+		padding: 0 max(var(--section-spacing), env(safe-area-inset-left, 0px))
+			max(1.5rem, env(safe-area-inset-bottom, 0px))
+			max(var(--section-spacing), env(safe-area-inset-right, 0px));
+		padding-top: calc(var(--nav-h) + 3rem);
+		box-sizing: border-box;
 	}
-	.mob-links button {
+	.mob-menu-spacer {
+		flex: 1 1 auto;
+		min-height: 2.5rem;
+	}
+	.mob-primary {
+		display: block;
+		flex-shrink: 0;
+	}
+	.mob-primary-row {
+		padding-bottom: 0.5rem;
+	}
+	.mob-primary-link {
+		display: inline-block;
 		text-align: left;
-		line-height: 1.35;
+		font-family: var(--font-nav) !important;
+		font-size: 24px;
+		line-height: 1.2;
+		font-weight: 600 !important;
+		letter-spacing: 0;
+		font-synthesis: none;
+		font-feature-settings:
+			'liga' 1,
+			'kern' 1;
+		color: var(--black);
+		touch-action: manipulation;
+		min-height: 44px;
+		padding: 2px 0;
+		-webkit-tap-highlight-color: transparent;
+	}
+	.mob-primary-link.current {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+	}
+	.mob-secondary {
+		flex-shrink: 0;
+		padding-bottom: 4rem;
+	}
+	.mob-secondary-row {
+		padding-bottom: 0.5rem;
+	}
+	.mob-secondary-link {
+		display: inline-block;
+		text-align: left;
+		font-family: var(--font-nav) !important;
+		font-size: 15px;
+		line-height: 1.3;
+		font-weight: 400 !important;
+		letter-spacing: 0;
+		font-synthesis: none;
+		font-feature-settings:
+			'liga' 1,
+			'kern' 1;
+		color: var(--black);
+		text-decoration: none;
+		cursor: pointer;
+		touch-action: manipulation;
+		min-height: 40px;
+		padding: 2px 0;
+		-webkit-tap-highlight-color: transparent;
 	}
 	.mob-foot {
-		padding-bottom: 28px;
-		font-size: 13px;
+		flex-shrink: 0;
+		font-size: 11px;
+		line-height: 1.35;
 		color: var(--gray);
-		line-height: 1.9;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+		padding-bottom: 0.5rem;
 	}
 
 	@media (max-width: 800px) {
@@ -686,6 +876,11 @@
 		}
 		.nav-index {
 			display: block;
+			touch-action: manipulation;
+			min-height: 44px;
+			min-width: 44px;
+			padding: 8px;
+			margin: -8px -8px -8px 0;
 		}
 		.h-panel,
 		.w-panel {
@@ -698,8 +893,7 @@
 		.work-meta {
 			text-align: left;
 		}
-		.about-body,
-		.contact-body {
+		.about-body {
 			grid-template-columns: 1fr;
 		}
 		h1 {
