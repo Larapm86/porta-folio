@@ -1171,7 +1171,8 @@
 			white-space: normal;
 		}
 		.w-panel-bg--video video.w-panel-media--file {
-			border-width: 4px;
+			border-width: 8px;
+			border-radius: 4px;
 		}
 		.about-body {
 			grid-template-columns: 1fr;
