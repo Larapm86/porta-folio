@@ -127,10 +127,8 @@
 		const work = document.getElementById('strip-work');
 		let destroyHome: (() => void) | undefined;
 		let destroyWork: (() => void) | undefined;
-		if (home && work) {
-			destroyHome = dragScroll(home);
-			destroyWork = dragScroll(work);
-		}
+		if (home) destroyHome = dragScroll(home);
+		if (work) destroyWork = dragScroll(work);
 
 		return () => {
 			destroyHome?.();
@@ -738,6 +736,8 @@
 		object-fit: cover;
 		display: block;
 		pointer-events: none;
+		transform: scale(1);
+		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
 	.ph {
 		font-size: clamp(5rem, 13vw, 18rem);
@@ -746,6 +746,26 @@
 		line-height: 1;
 		user-select: none;
 		pointer-events: none;
+		transform: scale(1);
+		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
+	}
+	@media (hover: hover) and (pointer: fine) {
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img {
+			transform: scale(1.06);
+		}
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .ph {
+			transform: scale(1.06);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.h-panel-bg img,
+		.w-panel-bg .ph {
+			transition: none;
+		}
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img,
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .ph {
+			transform: none;
+		}
 	}
 
 	#page-work {
