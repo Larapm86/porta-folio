@@ -52,6 +52,13 @@
 		closeMob();
 	}
 
+	function chipOpenProject(e: KeyboardEvent, project: string) {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			show('work', project);
+		}
+	}
+
 	function dragScroll(el: HTMLElement) {
 		let down = false;
 		let moved = false;
@@ -118,12 +125,16 @@
 	onMount(() => {
 		const home = document.getElementById('strip-home');
 		const work = document.getElementById('strip-work');
-		if (!home || !work) return;
-		const destroyHome = dragScroll(home);
-		const destroyWork = dragScroll(work);
+		let destroyHome: (() => void) | undefined;
+		let destroyWork: (() => void) | undefined;
+		if (home && work) {
+			destroyHome = dragScroll(home);
+			destroyWork = dragScroll(work);
+		}
+
 		return () => {
-			destroyHome();
-			destroyWork();
+			destroyHome?.();
+			destroyWork?.();
 		};
 	});
 </script>
@@ -150,6 +161,12 @@
 		if (e.key === 'Escape' && mobileOpen) closeMob();
 	}}
 />
+
+{#snippet chipLetters(t: string)}
+	{#each t.split('') as ch, i}
+		<span class="chip__letter" style="--i: {i}">{ch === ' ' ? '\u00a0' : ch}</span>
+	{/each}
+{/snippet}
 
 <header class:menu-open={mobileOpen}>
 	<div class="nav-row">
@@ -180,7 +197,9 @@
 		</div>
 
 		<nav class="nav-right">
-			<button type="button" onclick={() => show('about')}>About</button>
+			<button type="button" class:current={activePage === 'about'} onclick={() => show('about')}>
+				About
+			</button>
 			<a class="nav-say-hola" href="mailto:lperezmolines@gmail.com">Say Hola</a>
 		</nav>
 
@@ -228,7 +247,14 @@
 			<!-- Arnold-style secondary block — About + contact (case studies are primary above) -->
 			<div class="mob-secondary">
 				<div class="mob-secondary-row">
-					<button type="button" class="mob-secondary-link" onclick={mobNavAbout}>About</button>
+					<button
+						type="button"
+						class="mob-secondary-link"
+						class:current={activePage === 'about'}
+						onclick={mobNavAbout}
+					>
+						About
+					</button>
 				</div>
 				<div class="mob-secondary-row">
 					<a
@@ -248,12 +274,63 @@
 <div id="page-home" class="page" class:active={activePage === 'home'}>
 	<div class="home-intro">
 		<p>
-			Product and system designer with a background in business. Previously, I helped
-			design <span class="chip">UX-matured environments</span>,
-			<span class="chip">premium retention</span> journeys, <span class="chip">0-to-1 products</span>,
-			accelerated <span class="chip">time-to-value</span>, and meaningful
-			<span class="chip">habit loops</span>. Recently, I've been focusing on improving
-			<span class="chip">growth systems</span>.
+			Product and system designer with a business background. Previously, I helped
+			design
+			<span
+				role="button"
+				tabindex="0"
+				class="chip"
+				onclick={() => show('work', 'UX Maturity')}
+				onkeydown={(e) => chipOpenProject(e, 'UX Maturity')}
+			>
+				{@render chipLetters('UX-matured environments')}
+			</span>,
+			<span
+				role="button"
+				tabindex="0"
+				class="chip"
+				onclick={() => show('work', 'Premium Retention')}
+				onkeydown={(e) => chipOpenProject(e, 'Premium Retention')}
+			>
+				{@render chipLetters('premium retention')}
+			</span>
+			journeys,
+			<span
+				role="button"
+				tabindex="0"
+				class="chip"
+				onclick={() => show('work', '0-to-1 Product')}
+				onkeydown={(e) => chipOpenProject(e, '0-to-1 Product')}
+			>
+				{@render chipLetters('0-to-1 products')}
+			</span>, accelerated
+			<span
+				role="button"
+				tabindex="0"
+				class="chip"
+				onclick={() => show('work', 'Time-to-Value')}
+				onkeydown={(e) => chipOpenProject(e, 'Time-to-Value')}
+			>
+				{@render chipLetters('time-to-value')}
+			</span>, and meaningful
+			<span
+				role="button"
+				tabindex="0"
+				class="chip"
+				onclick={() => show('work', 'Habit Loops')}
+				onkeydown={(e) => chipOpenProject(e, 'Habit Loops')}
+			>
+				{@render chipLetters('habit loops')}
+			</span>. Recently, I've been focusing on improving
+			<span
+				role="button"
+				tabindex="0"
+				class="chip"
+				onclick={() => show('work', 'Growth Systems')}
+				onkeydown={(e) => chipOpenProject(e, 'Growth Systems')}
+			>
+				{@render chipLetters('growth systems')}
+			</span>.
 		</p>
 	</div>
 
@@ -320,7 +397,6 @@
 </div>
 
 <div id="page-about" class="page" class:active={activePage === 'about'}>
-	<h1>About</h1>
 	<div class="about-body">
 		<div class="about-portrait"><span class="about-ph">YN</span></div>
 		<div class="about-bio">
@@ -520,6 +596,11 @@
 		text-decoration-thickness: 1px;
 		text-underline-offset: 3px;
 	}
+	.nav-right button.current {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+	}
 	.nav-right {
 		display: flex;
 		gap: 22px;
@@ -535,12 +616,14 @@
 		left: 0;
 		right: 0;
 		bottom: 0;
+		z-index: 1;
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
 		transition: opacity 0.25s, visibility 0.25s;
 	}
 	.page.active {
+		z-index: 100;
 		opacity: 1;
 		visibility: visible;
 		pointer-events: auto;
@@ -567,11 +650,43 @@
 		}
 	}
 	.chip {
-		display: inline;
+		display: inline-block;
+		vertical-align: baseline;
+		padding: 1px 10px;
+		line-height: 1.28;
 		background: rgba(0, 0, 0, 0.07);
-		border-radius: 30px;
-		padding: 2px 14px;
+		border-radius: 6px;
 		white-space: nowrap;
+		cursor: pointer;
+		touch-action: manipulation;
+		-webkit-tap-highlight-color: transparent;
+		transition: background 0.22s ease;
+	}
+	.chip__letter {
+		display: inline-block;
+		transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+		transition-delay: 0s;
+	}
+	.chip:hover .chip__letter,
+	.chip:focus-visible .chip__letter {
+		transform: translateY(-0.11em);
+		transition-delay: calc(var(--i) * 0.022s);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.chip__letter {
+			transition: none;
+		}
+		.chip:hover .chip__letter,
+		.chip:focus-visible .chip__letter {
+			transform: none;
+		}
+	}
+	.chip:hover {
+		background: rgba(0, 0, 0, 0.1);
+	}
+	.chip:focus-visible {
+		outline: 2px solid var(--black);
+		outline-offset: 2px;
 	}
 
 	.home-strip {
@@ -686,17 +801,6 @@
 	#page-about {
 		overflow-y: auto;
 		padding: var(--top-gap) var(--px) var(--px);
-	}
-	h1 {
-		font-size: clamp(2.5rem, 7vw, 9rem);
-		font-weight: 400;
-		line-height: 1;
-		letter-spacing: -0.02em;
-		margin-bottom: 40px;
-	}
-	#page-about h1 {
-		font-family: var(--font-body);
-		letter-spacing: -0.02em;
 	}
 	.about-body {
 		display: grid;
@@ -839,6 +943,11 @@
 		padding: 2px 0;
 		-webkit-tap-highlight-color: transparent;
 	}
+	.mob-secondary-link.current {
+		text-decoration: underline;
+		text-decoration-thickness: 1px;
+		text-underline-offset: 3px;
+	}
 	.mob-foot {
 		flex-shrink: 0;
 		font-size: 11px;
@@ -898,9 +1007,6 @@
 		}
 		.about-body {
 			grid-template-columns: 1fr;
-		}
-		h1 {
-			font-size: clamp(2rem, 12vw, 4rem);
 		}
 	}
 </style>
