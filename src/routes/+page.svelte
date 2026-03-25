@@ -306,7 +306,6 @@
 	</div>
 
 	<div class="work-strip-wrap">
-		<span class="work-giant">{currentProject}</span>
 		<div class="work-strip" id="strip-work">
 			{#each PROJECTS[currentProject].panels as panel}
 				<div class="w-panel">
@@ -655,14 +654,14 @@
 	.work-desc {
 		grid-column: 1;
 		font-size: 14px;
-		line-height: 1.3;
+		line-height: 29px;
 		font-weight: 400;
 		max-width: 480px;
 	}
 	.work-meta {
 		grid-column: 2;
 		font-size: 14px;
-		line-height: 1.3;
+		line-height: 29px;
 		font-weight: 400;
 		text-align: right;
 		white-space: nowrap;
@@ -673,24 +672,8 @@
 		position: relative;
 		overflow: hidden;
 	}
-	.work-giant {
-		position: absolute;
-		top: 50%;
-		left: 0;
-		right: 0;
-		transform: translateY(-50%);
-		text-align: center;
-		font-size: clamp(4rem, 15vh, 13rem);
-		font-weight: 400;
-		line-height: 1;
-		white-space: nowrap;
-		pointer-events: none;
-		z-index: 10;
-		letter-spacing: -0.015em;
-	}
 	.w-panel {
 		position: relative;
-		z-index: 1;
 	}
 	.w-panel-label {
 		position: absolute;
