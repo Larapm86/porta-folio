@@ -248,7 +248,7 @@
 <div id="page-home" class="page" class:active={activePage === 'home'}>
 	<div class="home-intro">
 		<p>
-			Product and system designer based in Spain, working globally and remotely. Previously, I helped
+			Product and system designer with a background in business. Previously, I helped
 			design <span class="chip">UX-matured environments</span>,
 			<span class="chip">premium retention</span> journeys, <span class="chip">0-to-1 products</span>,
 			accelerated <span class="chip">time-to-value</span>, and meaningful
