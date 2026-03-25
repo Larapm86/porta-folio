@@ -1172,7 +1172,6 @@
 		}
 		.w-panel-bg--video video.w-panel-media--file {
 			border-width: 6px;
-			border-radius: 8px;
 		}
 		.about-body {
 			grid-template-columns: 1fr;
