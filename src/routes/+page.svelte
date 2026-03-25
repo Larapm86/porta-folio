@@ -16,8 +16,6 @@
 	type ProjectDef = {
 		desc: string;
 		meta: string;
-		/** Full-bleed cover for work panels without video or slide image (same assets as home strip). */
-		cover: { src: string; alt: string };
 		panels: WorkPanel[];
 	};
 
@@ -25,10 +23,6 @@
 		'UX Maturity': {
 			desc: 'Designed working environments and design system frameworks that raised UX maturity across product teams - establishing shared principles, critique rituals, and scalable component libraries.',
 			meta: 'UX Strategy.<br>Design Systems.<br>Spain',
-			cover: {
-				src: '/assets/kwit-cover.png',
-				alt: 'Kwit app with World Health Organization validation'
-			},
 			panels: [
 				{
 					label: 'Discovery',
@@ -36,7 +30,7 @@
 				},
 				{
 					label: 'Frameworks',
-					image: '/assets/kwit-uxr-shareout.png'
+					image: '/assets/kwit-first-design-sprint.png'
 				},
 				{ label: 'Components' },
 				{ label: 'Rituals' }
@@ -45,10 +39,6 @@
 		'Premium Retention': {
 			desc: 'Crafted premium retention journeys for smoke-free products - combining behavioral triggers, personalization, and habit-forming UX patterns to keep users engaged long-term.',
 			meta: 'Retention Design.<br>Behavioral UX.<br>Spain',
-			cover: {
-				src: '/assets/kwit-cover.png',
-				alt: 'Kwit app with World Health Organization validation'
-			},
 			panels: [
 				{ label: 'Onboarding' },
 				{ label: 'Triggers' },
@@ -59,10 +49,6 @@
 		'0-to-1 Product': {
 			desc: 'Co-developed a 0-to-1 product to help people drink mindfully - from early concept and research through to shipped experience, covering strategy, UX, and product design.',
 			meta: 'Product Design.<br>0-to-1.<br>Spain',
-			cover: {
-				src: '/assets/sobero-cover.png',
-				alt: 'Sobero'
-			},
 			panels: [
 				{
 					label: 'Research',
@@ -76,10 +62,6 @@
 		'Time-to-Value': {
 			desc: 'Accelerated time-to-value in onboarding funnels by reducing friction, clarifying value propositions, and designing progressive disclosure flows that get users to their first meaningful moment faster.',
 			meta: 'Onboarding Design.<br>Conversion.<br>Spain',
-			cover: {
-				src: '/assets/yazio-cover.png',
-				alt: 'Yazio UX case study: microcopy optimization and Apple and Google Health onboarding variants'
-			},
 			panels: [
 				{ label: 'Audit' },
 				{ label: 'Flow Design' },
@@ -90,10 +72,6 @@
 		'Habit Loops': {
 			desc: 'Crafted meaningful habit loops for better nutrition - applying behavior design principles to create engaging, sustainable product experiences that make healthy choices easier.',
 			meta: 'Behavior Design.<br>Habit UX.<br>Spain',
-			cover: {
-				src: '/assets/yazio-cover-02.png',
-				alt: 'Habit loop illustration with mascot: reward, investment, trigger, and routine'
-			},
 			panels: [
 				{ label: 'Research' },
 				{ label: 'Loop Design' },
@@ -104,10 +82,6 @@
 		'Growth Systems': {
 			desc: 'Focused on improving growth systems - designing activation, retention, and referral loops that compound over time and create sustainable product-led growth.',
 			meta: 'Growth Design.<br>Systems Thinking.<br>Spain',
-			cover: {
-				src: '/assets/welltech-cover.png',
-				alt: 'Product workflow board: hypothesis, specification, design phases with roles and pain points'
-			},
 			panels: [
 				{ label: 'Activation' },
 				{ label: 'Retention' },
@@ -467,7 +441,11 @@
 		<div class="work-strip" id="strip-work">
 			{#each PROJECTS[currentProject].panels as panel}
 				<div class="w-panel">
-					<div class="w-panel-bg" class:w-panel-bg--video={panel.video || panel.image}>
+					<div
+						class="w-panel-bg"
+						class:w-panel-bg--video={panel.video || panel.image}
+						class:w-panel-bg--placeholder={!panel.video && !panel.image}
+					>
 						{#if panel.image}
 							<img
 								class="w-panel-media w-panel-media--image"
@@ -515,13 +493,6 @@
 									/>
 								</video>
 							{/key}
-						{:else}
-							<img
-								class="w-panel-media w-panel-media--cover"
-								src={PROJECTS[currentProject].cover.src}
-								alt={PROJECTS[currentProject].cover.alt}
-								loading="lazy"
-							/>
 						{/if}
 						<span class="w-panel-label">{panel.label}</span>
 					</div>
@@ -876,6 +847,9 @@
 		transform: scale(1);
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
+	.w-panel-bg--placeholder {
+		background: var(--cream);
+	}
 	.w-panel-bg--video {
 		background: #f6f6f6;
 	}
@@ -907,12 +881,10 @@
 		border-radius: 32px;
 		overflow: hidden;
 	}
-	.w-panel-bg .w-panel-media--cover,
 	.w-panel-bg--video img.w-panel-media--image {
 		object-fit: cover;
 		pointer-events: none;
 	}
-	.w-panel-bg:has(> .w-panel-media--cover) .w-panel-label,
 	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label {
 		color: #fff;
 		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
@@ -1197,6 +1169,9 @@
 		.work-meta {
 			text-align: left;
 			white-space: normal;
+		}
+		.w-panel-bg--video video.w-panel-media--file {
+			border-width: 4px;
 		}
 		.about-body {
 			grid-template-columns: 1fr;
