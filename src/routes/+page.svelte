@@ -1,36 +1,119 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	const PROJECTS: Record<string, { desc: string; meta: string; panels: string[] }> = {
+	/** Optional clip per case-study panel: MP4/WebM in `/static/…` or YouTube / Vimeo IDs. */
+	type WorkPanelVideo =
+		| { type: 'file'; src: string; poster?: string }
+		| { type: 'youtube'; id: string }
+		| { type: 'vimeo'; id: string };
+
+	type WorkPanel = {
+		label: string;
+		video?: WorkPanelVideo;
+		image?: string;
+	};
+
+	type ProjectDef = {
+		desc: string;
+		meta: string;
+		/** Full-bleed cover for work panels without video or slide image (same assets as home strip). */
+		cover: { src: string; alt: string };
+		panels: WorkPanel[];
+	};
+
+	const PROJECTS: Record<string, ProjectDef> = {
 		'UX Maturity': {
 			desc: 'Designed working environments and design system frameworks that raised UX maturity across product teams - establishing shared principles, critique rituals, and scalable component libraries.',
 			meta: 'UX Strategy.<br>Design Systems.<br>Spain',
-			panels: ['Discovery', 'Frameworks', 'Components', 'Rituals']
+			cover: {
+				src: '/assets/kwit-cover.png',
+				alt: 'Kwit app with World Health Organization validation'
+			},
+			panels: [
+				{
+					label: 'Discovery',
+					video: { type: 'file', src: '/assets/ux-maturity-discovery.mov' }
+				},
+				{
+					label: 'Frameworks',
+					image: '/assets/kwit-uxr-shareout.png'
+				},
+				{ label: 'Components' },
+				{ label: 'Rituals' }
+			]
 		},
 		'Premium Retention': {
 			desc: 'Crafted premium retention journeys for smoke-free products - combining behavioral triggers, personalization, and habit-forming UX patterns to keep users engaged long-term.',
 			meta: 'Retention Design.<br>Behavioral UX.<br>Spain',
-			panels: ['Onboarding', 'Triggers', 'Personalization', 'Loops']
+			cover: {
+				src: '/assets/kwit-cover.png',
+				alt: 'Kwit app with World Health Organization validation'
+			},
+			panels: [
+				{ label: 'Onboarding' },
+				{ label: 'Triggers' },
+				{ label: 'Personalization' },
+				{ label: 'Loops' }
+			]
 		},
 		'0-to-1 Product': {
 			desc: 'Co-developed a 0-to-1 product to help people drink mindfully - from early concept and research through to shipped experience, covering strategy, UX, and product design.',
 			meta: 'Product Design.<br>0-to-1.<br>Spain',
-			panels: ['Research', 'Concept', 'UX Design', 'Launch']
+			cover: {
+				src: '/assets/sobero-cover.png',
+				alt: 'Sobero'
+			},
+			panels: [
+				{
+					label: 'Research',
+					video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' }
+				},
+				{ label: 'Concept' },
+				{ label: 'UX Design' },
+				{ label: 'Launch' }
+			]
 		},
 		'Time-to-Value': {
 			desc: 'Accelerated time-to-value in onboarding funnels by reducing friction, clarifying value propositions, and designing progressive disclosure flows that get users to their first meaningful moment faster.',
 			meta: 'Onboarding Design.<br>Conversion.<br>Spain',
-			panels: ['Audit', 'Flow Design', 'Testing', 'Optimization']
+			cover: {
+				src: '/assets/yazio-cover.png',
+				alt: 'Yazio UX case study: microcopy optimization and Apple and Google Health onboarding variants'
+			},
+			panels: [
+				{ label: 'Audit' },
+				{ label: 'Flow Design' },
+				{ label: 'Testing' },
+				{ label: 'Optimization' }
+			]
 		},
 		'Habit Loops': {
 			desc: 'Crafted meaningful habit loops for better nutrition - applying behavior design principles to create engaging, sustainable product experiences that make healthy choices easier.',
 			meta: 'Behavior Design.<br>Habit UX.<br>Spain',
-			panels: ['Research', 'Loop Design', 'Triggers', 'Rewards']
+			cover: {
+				src: '/assets/yazio-cover-02.png',
+				alt: 'Habit loop illustration with mascot: reward, investment, trigger, and routine'
+			},
+			panels: [
+				{ label: 'Research' },
+				{ label: 'Loop Design' },
+				{ label: 'Triggers' },
+				{ label: 'Rewards' }
+			]
 		},
 		'Growth Systems': {
 			desc: 'Focused on improving growth systems - designing activation, retention, and referral loops that compound over time and create sustainable product-led growth.',
 			meta: 'Growth Design.<br>Systems Thinking.<br>Spain',
-			panels: ['Activation', 'Retention', 'Referral', 'Analytics']
+			cover: {
+				src: '/assets/welltech-cover.png',
+				alt: 'Product workflow board: hypothesis, specification, design phases with roles and pain points'
+			},
+			panels: [
+				{ label: 'Activation' },
+				{ label: 'Retention' },
+				{ label: 'Referral' },
+				{ label: 'Analytics' }
+			]
 		}
 	};
 
@@ -384,9 +467,63 @@
 		<div class="work-strip" id="strip-work">
 			{#each PROJECTS[currentProject].panels as panel}
 				<div class="w-panel">
-					<div class="w-panel-bg">
-						<span class="ph">{currentProject.charAt(0)}</span>
-						<span class="w-panel-label">{panel}</span>
+					<div class="w-panel-bg" class:w-panel-bg--video={panel.video || panel.image}>
+						{#if panel.image}
+							<img
+								class="w-panel-media w-panel-media--image"
+								src={panel.image}
+								alt={panel.label}
+								loading="lazy"
+							/>
+						{:else if panel.video?.type === 'youtube'}
+							<iframe
+								class="w-panel-media"
+								title={panel.label}
+								src="https://www.youtube-nocookie.com/embed/{panel.video.id}?rel=0&modestbranding=1"
+								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+								allowfullscreen
+								referrerpolicy="strict-origin-when-cross-origin"
+								loading="lazy"
+							></iframe>
+						{:else if panel.video?.type === 'vimeo'}
+							<iframe
+								class="w-panel-media"
+								title={panel.label}
+								src="https://player.vimeo.com/video/{panel.video.id}?dnt=1"
+								allow="autoplay; fullscreen; picture-in-picture"
+								allowfullscreen
+								referrerpolicy="strict-origin-when-cross-origin"
+								loading="lazy"
+							></iframe>
+						{:else if panel.video?.type === 'file'}
+							{#key `${currentProject}-${panel.label}-${panel.video.src}`}
+								<video
+									class="w-panel-media w-panel-media--file"
+									controls
+									playsinline
+									preload="auto"
+									autoplay
+									muted
+									loop
+									poster={panel.video.poster ?? undefined}
+								>
+									<source
+										src={panel.video.src}
+										type={panel.video.src.split('?')[0].toLowerCase().endsWith('.mov')
+											? 'video/quicktime'
+											: undefined}
+									/>
+								</video>
+							{/key}
+						{:else}
+							<img
+								class="w-panel-media w-panel-media--cover"
+								src={PROJECTS[currentProject].cover.src}
+								alt={PROJECTS[currentProject].cover.alt}
+								loading="lazy"
+							/>
+						{/if}
+						<span class="w-panel-label">{panel.label}</span>
 					</div>
 				</div>
 			{/each}
@@ -739,31 +876,62 @@
 		transform: scale(1);
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
-	.ph {
-		font-size: clamp(5rem, 13vw, 18rem);
-		color: rgba(0, 0, 0, 0.07);
-		letter-spacing: -0.05em;
-		line-height: 1;
-		user-select: none;
-		pointer-events: none;
+	.w-panel-bg--video {
+		background: #f6f6f6;
+	}
+	.w-panel-bg--video:has(> video.w-panel-media) {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+	.w-panel-media {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		border: 0;
+		display: block;
 		transform: scale(1);
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
+	}
+	.w-panel-bg--video video.w-panel-media--file {
+		position: relative;
+		inset: auto;
+		width: auto;
+		height: auto;
+		max-width: min(92%, calc(100% - 24px));
+		max-height: min(72%, calc(100% - 80px));
+		object-fit: contain;
+		box-sizing: border-box;
+		border: 8px solid #000;
+		border-radius: 32px;
+		overflow: hidden;
+	}
+	.w-panel-bg .w-panel-media--cover,
+	.w-panel-bg--video img.w-panel-media--image {
+		object-fit: cover;
+		pointer-events: none;
+	}
+	.w-panel-bg:has(> .w-panel-media--cover) .w-panel-label,
+	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label {
+		color: #fff;
+		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 	}
 	@media (hover: hover) and (pointer: fine) {
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img {
 			transform: scale(1.06);
 		}
-		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .ph {
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media {
 			transform: scale(1.06);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
 		.h-panel-bg img,
-		.w-panel-bg .ph {
+		.w-panel-bg .w-panel-media {
 			transition: none;
 		}
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img,
-		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .ph {
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media {
 			transform: none;
 		}
 	}
@@ -814,8 +982,13 @@
 		position: absolute;
 		bottom: 12px;
 		left: 14px;
+		z-index: 2;
 		font-size: 14px;
 		pointer-events: none;
+	}
+	.w-panel-bg--video .w-panel-label {
+		color: var(--black);
+		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 	}
 
 	#page-about {
