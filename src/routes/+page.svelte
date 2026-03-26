@@ -1,103 +1,31 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { onMount, tick } from 'svelte';
+	import { PROJECTS, projectToSlug } from '$lib/data/projects';
 
-	/** Optional clip per case-study panel: MP4/WebM in `/static/…` or YouTube / Vimeo IDs. */
-	type WorkPanelVideo =
-		| { type: 'file'; src: string; poster?: string }
-		| { type: 'youtube'; id: string }
-		| { type: 'vimeo'; id: string };
-
-	type WorkPanel = {
-		label: string;
-		video?: WorkPanelVideo;
-		image?: string;
-		/** Full-bleed slides; horizontal scroll + snap inside the panel. */
-		images?: string[];
+	type PageKey = 'home' | 'work' | 'about';
+	type PageProps = {
+		initialActivePage?: PageKey;
+		initialProject?: string;
 	};
+	let { initialActivePage = 'home', initialProject = 'UX Maturity' }: PageProps = $props();
 
-	type ProjectDef = {
-		desc: string;
-		meta: string;
-		panels: WorkPanel[];
-	};
-
-	const PROJECTS: Record<string, ProjectDef> = {
-		'UX Maturity': {
-			desc: 'Designed working environments and design system frameworks that raised UX maturity across product teams - establishing shared principles, critique rituals, and scalable component libraries.',
-			meta: 'UX Strategy.<br>Design Systems.<br>Spain',
-			panels: [
-				{
-					label: 'Discovery',
-					video: { type: 'file', src: '/assets/ux-maturity-discovery.mov' }
-				},
-				{ label: 'Frameworks' },
-				{ label: 'Components' },
-				{ label: 'Rituals' }
-			]
-		},
-		'Premium Retention': {
-			desc: 'Crafted premium retention journeys for smoke-free products - combining behavioral triggers, personalization, and habit-forming UX patterns to keep users engaged long-term.',
-			meta: 'Retention Design.<br>Behavioral UX.<br>Spain',
-			panels: [
-				{ label: 'Onboarding' },
-				{ label: 'Triggers' },
-				{ label: 'Personalization' },
-				{ label: 'Loops' }
-			]
-		},
-		'0-to-1 Product': {
-			desc: 'Co-developed a 0-to-1 product to help people drink mindfully - from early concept and research through to shipped experience, covering strategy, UX, and product design.',
-			meta: 'Product Design.<br>0-to-1.<br>Spain',
-			panels: [
-				{
-					label: 'Progressive onboarding',
-					video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' }
-				},
-				{
-					label: 'Modular product architecture',
-					image: '/assets/sobero-modular.png'
-				},
-				{
-					label: 'Foundational research',
-					images: ['/assets/sobero-foundational-03.png', '/assets/sobero-foundational-02.png']
-				},
-				{ label: 'Launch' }
-			]
-		},
-		'Time-to-Value': {
-			desc: 'Accelerated time-to-value in onboarding funnels by reducing friction, clarifying value propositions, and designing progressive disclosure flows that get users to their first meaningful moment faster.',
-			meta: 'Onboarding Design.<br>Conversion.<br>Spain',
-			panels: [
-				{ label: 'Audit' },
-				{ label: 'Flow Design' },
-				{ label: 'Testing' },
-				{ label: 'Optimization' }
-			]
-		},
-		'Habit Loops': {
-			desc: 'Crafted meaningful habit loops for better nutrition - applying behavior design principles to create engaging, sustainable product experiences that make healthy choices easier.',
-			meta: 'Behavior Design.<br>Habit UX.<br>Spain',
-			panels: [
-				{ label: 'Research' },
-				{ label: 'Loop Design' },
-				{ label: 'Triggers' },
-				{ label: 'Rewards' }
-			]
-		},
-		'Growth Systems': {
-			desc: 'Focused on improving growth systems - designing activation, retention, and referral loops that compound over time and create sustainable product-led growth.',
-			meta: 'Growth Design.<br>Systems Thinking.<br>Spain',
-			panels: [
-				{ label: 'Activation' },
-				{ label: 'Retention' },
-				{ label: 'Referral' },
-				{ label: 'Analytics' }
-			]
-		}
-	};
-
-	let activePage = $state('home');
+	let activePage = $state<PageKey>('home');
 	let currentProject = $state('UX Maturity');
+	let appliedInitialPage = $state<PageKey | null>(null);
+	let appliedInitialProject = $state<string | null>(null);
+	$effect(() => {
+		const nextPage: PageKey =
+			initialActivePage === 'work' || initialActivePage === 'about' ? initialActivePage : 'home';
+		const nextProject = Object.prototype.hasOwnProperty.call(PROJECTS, initialProject)
+			? initialProject
+			: 'UX Maturity';
+		if (appliedInitialPage === nextPage && appliedInitialProject === nextProject) return;
+		activePage = nextPage;
+		currentProject = nextProject;
+		appliedInitialPage = nextPage;
+		appliedInitialProject = nextProject;
+	});
 	let mobileOpen = $state(false);
 	let soberoPanelEl: HTMLDivElement | null = null;
 	let soberoAnimEl: HTMLDivElement | null = null;
@@ -125,7 +53,7 @@
 	let welltechAnimation: import('lottie-web').AnimationItem | null = null;
 	let welltechMobileInView = false;
 
-	function show(id: string, project: string | null = null) {
+	function show(id: PageKey, project: string | null = null) {
 		activePage = id;
 		if (id === 'work' && project) currentProject = project;
 	}
@@ -134,15 +62,27 @@
 		mobileOpen = false;
 	}
 
+	function openProjectRoute(project: string) {
+		void goto(`/work/${projectToSlug(project)}`);
+	}
+
+	function openAboutRoute() {
+		void goto('/about');
+	}
+
+	function openHomeRoute() {
+		void goto('/');
+	}
+
 	function mobNavAbout() {
-		show('about');
 		closeMob();
+		openAboutRoute();
 	}
 
 	function chipOpenProject(e: KeyboardEvent, project: string) {
 		if (e.key === 'Enter' || e.key === ' ') {
 			e.preventDefault();
-			show('work', project);
+			openProjectRoute(project);
 		}
 	}
 
@@ -750,35 +690,35 @@
 <header class:menu-open={mobileOpen}>
 	<div class="nav-row">
 		<div class="nav-brand">
-			<button type="button" onclick={() => show('home')}>Lara Perez</button>
+				<button type="button" onclick={openHomeRoute}>Lara Perez</button>
 		</div>
 
 		<div class="nav-work" class:sub-visible={activePage === 'work'}>
-			<button
-				type="button"
-				class="nav-work-label"
-				class:active={activePage === 'work'}
-				onclick={() => show('home')}
-			>
-				Work
-			</button>
+				<button
+					type="button"
+					class="nav-work-label"
+					class:active={activePage === 'work'}
+					onclick={openHomeRoute}
+				>
+					Work
+				</button>
 			<div class="nav-sub-links">
 				{#each Object.keys(PROJECTS) as proj}
-					<button
-						type="button"
+						<button
+							type="button"
 						class:current={activePage === 'work' && currentProject === proj}
-						onclick={() => show('work', proj)}
-					>
+							onclick={() => openProjectRoute(proj)}
+						>
 						{proj}
-					</button>
+						</button>
 				{/each}
 			</div>
 		</div>
 
 		<nav class="nav-right">
-			<button type="button" class:current={activePage === 'about'} onclick={() => show('about')}>
-				About
-			</button>
+				<button type="button" class:current={activePage === 'about'} onclick={openAboutRoute}>
+					About
+				</button>
 			<a class="nav-say-hola" href="mailto:lperezmolines@gmail.com">Say Hola</a>
 		</nav>
 
@@ -812,7 +752,7 @@
 							class="mob-primary-link"
 							class:current={currentProject === proj && activePage === 'work'}
 							onclick={() => {
-								show('work', proj);
+								openProjectRoute(proj);
 								closeMob();
 							}}
 						>
@@ -859,7 +799,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
-				onclick={() => show('work', 'UX Maturity')}
+				onclick={() => openProjectRoute('UX Maturity')}
 				onkeydown={(e) => chipOpenProject(e, 'UX Maturity')}
 			>
 				{@render chipLetters('UX-matured environments')}
@@ -868,7 +808,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
-				onclick={() => show('work', 'Premium Retention')}
+				onclick={() => openProjectRoute('Premium Retention')}
 				onkeydown={(e) => chipOpenProject(e, 'Premium Retention')}
 			>
 				{@render chipLetters('premium retention')}
@@ -878,7 +818,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
-				onclick={() => show('work', '0-to-1 Product')}
+				onclick={() => openProjectRoute('0-to-1 Product')}
 				onkeydown={(e) => chipOpenProject(e, '0-to-1 Product')}
 			>
 				{@render chipLetters('0-to-1 products')}
@@ -887,7 +827,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
-				onclick={() => show('work', 'Time-to-Value')}
+				onclick={() => openProjectRoute('Time-to-Value')}
 				onkeydown={(e) => chipOpenProject(e, 'Time-to-Value')}
 			>
 				{@render chipLetters('time-to-value')}
@@ -896,7 +836,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
-				onclick={() => show('work', 'Habit Loops')}
+				onclick={() => openProjectRoute('Habit Loops')}
 				onkeydown={(e) => chipOpenProject(e, 'Habit Loops')}
 			>
 				{@render chipLetters('habit loops')}
@@ -905,7 +845,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
-				onclick={() => show('work', 'Growth Systems')}
+				onclick={() => openProjectRoute('Growth Systems')}
 				onkeydown={(e) => chipOpenProject(e, 'Growth Systems')}
 			>
 				{@render chipLetters('growth systems')}
