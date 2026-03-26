@@ -50,26 +50,16 @@
 			meta: 'Product Design.<br>0-to-1.<br>Spain',
 			panels: [
 				{
-					label: 'Research',
+					label: 'Progressive onboarding',
 					video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' }
 				},
 				{
-					label: 'Concept',
-					images: [
-						'/assets/sobero-illustrations.png',
-						'/assets/sobero-icons-default.png',
-						'/assets/sobero-icons-selected.png',
-						'/assets/sobero-scenes.png',
-						'/assets/sobero-pictograms.png'
-					]
+					label: 'Modular product architecture',
+					image: '/assets/sobero-modular.png'
 				},
 				{
-					label: 'UX Design',
-					images: [
-						'/assets/sobero-strategy-01.png',
-						'/assets/sobero-strategy-03.png',
-						'/assets/sobero-strategy-02.png'
-					]
+					label: 'Foundational research',
+					images: ['/assets/sobero-foundational-03.png', '/assets/sobero-foundational-02.png']
 				},
 				{ label: 'Launch' }
 			]
@@ -129,6 +119,11 @@
 	let yazio02AnimVisible = $state(false);
 	let yazio02Animation: import('lottie-web').AnimationItem | null = null;
 	let yazio02MobileInView = false;
+	let welltechPanelEl: HTMLDivElement | null = null;
+	let welltechAnimEl: HTMLDivElement | null = null;
+	let welltechAnimVisible = $state(false);
+	let welltechAnimation: import('lottie-web').AnimationItem | null = null;
+	let welltechMobileInView = false;
 
 	function show(id: string, project: string | null = null) {
 		activePage = id;
@@ -343,10 +338,61 @@
 		stopYazio02Animation();
 	}
 
+	async function ensureWelltechAnimation() {
+		if (!welltechAnimEl || welltechAnimation) return;
+		const lottieModule = await import('lottie-web');
+		const lottie = lottieModule.default;
+		welltechAnimation = lottie.loadAnimation({
+			container: welltechAnimEl,
+			renderer: 'svg',
+			loop: true,
+			autoplay: false,
+			path: '/assets/welltech-cover-hover.json',
+			rendererSettings: {
+				preserveAspectRatio: 'xMidYMid slice'
+			}
+		});
+		welltechAnimation.goToAndStop(0, true);
+	}
+
+	async function playWelltechAnimation() {
+		await ensureWelltechAnimation();
+		welltechAnimVisible = true;
+		welltechAnimation?.setLoop(true);
+		welltechAnimation?.goToAndPlay(0, true);
+	}
+
+	async function playWelltechAnimationOnce() {
+		await ensureWelltechAnimation();
+		welltechAnimVisible = true;
+		welltechAnimation?.setLoop(false);
+		welltechAnimation?.goToAndPlay(0, true);
+	}
+
+	function stopWelltechAnimation() {
+		welltechAnimation?.stop();
+		welltechAnimation?.goToAndStop(0, true);
+		welltechAnimVisible = false;
+	}
+
+	function onWelltechHoverStart() {
+		if (isCoarsePointerDevice()) return;
+		void playWelltechAnimation();
+	}
+
+	function onWelltechHoverEnd() {
+		if (isCoarsePointerDevice()) return;
+		stopWelltechAnimation();
+	}
+
 	function carouselStepPx(track: HTMLElement): number {
 		// Slides are full-width (`flex: 0 0 100%` / `width: 100%`), so using the track width
 		// avoids off-by-a-few-pixels rounding that can cause the snap to pick the same slide.
 		return track.clientWidth || 0;
+	}
+
+	function carouselSlideCount(track: HTMLElement): number {
+		return track.querySelectorAll('.w-panel-carousel-img').length;
 	}
 
 	function syncCarouselArrows(track: HTMLElement) {
@@ -372,7 +418,9 @@
 			typeof window !== 'undefined' &&
 			!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const step = carouselStepPx(track);
-		track.scrollBy({ left: dir * step, behavior: smooth ? 'smooth' : 'instant' });
+		const count = carouselSlideCount(track);
+		if (step <= 0 || count <= 0) return;
+		track.scrollBy({ left: dir * step, behavior: smooth ? 'smooth' : 'auto' });
 		const sync = () => syncCarouselArrows(track);
 		sync();
 		track.addEventListener('scrollend', sync, { once: true });
@@ -476,10 +524,12 @@
 		let kwitObserver: IntersectionObserver | null = null;
 		let yazio01Observer: IntersectionObserver | null = null;
 		let yazio02Observer: IntersectionObserver | null = null;
+		let welltechObserver: IntersectionObserver | null = null;
 		let removeSoberoHoverListeners: (() => void) | undefined;
 		let removeKwitHoverListeners: (() => void) | undefined;
 		let removeYazio01HoverListeners: (() => void) | undefined;
 		let removeYazio02HoverListeners: (() => void) | undefined;
+		let removeWelltechHoverListeners: (() => void) | undefined;
 		if (home) destroyHome = dragScroll(home);
 		if (work) destroyWork = dragScroll(work);
 		if (soberoPanelEl) {
@@ -520,6 +570,16 @@
 			removeYazio02HoverListeners = () => {
 				yazio02PanelEl?.removeEventListener('mouseenter', onEnter);
 				yazio02PanelEl?.removeEventListener('mouseleave', onLeave);
+			};
+		}
+		if (welltechPanelEl) {
+			const onEnter = () => onWelltechHoverStart();
+			const onLeave = () => onWelltechHoverEnd();
+			welltechPanelEl.addEventListener('mouseenter', onEnter);
+			welltechPanelEl.addEventListener('mouseleave', onLeave);
+			removeWelltechHoverListeners = () => {
+				welltechPanelEl?.removeEventListener('mouseenter', onEnter);
+				welltechPanelEl?.removeEventListener('mouseleave', onLeave);
 			};
 		}
 		if (kwitPanelEl) {
@@ -598,21 +658,45 @@
 			);
 			yazio02Observer.observe(yazio02PanelEl);
 		}
+		if (welltechPanelEl) {
+			welltechObserver = new IntersectionObserver(
+				(entries) => {
+					if (!isCoarsePointerDevice()) return;
+					const entry = entries[0];
+					if (!entry) return;
+					// Last panel rarely reaches ~100% visibility on mobile due viewport and strip padding.
+					// Trigger once when it's mostly visible.
+					if (entry.intersectionRatio >= 0.85) {
+						if (welltechMobileInView) return;
+						welltechMobileInView = true;
+						void playWelltechAnimationOnce();
+						return;
+					}
+					welltechMobileInView = false;
+					stopWelltechAnimation();
+				},
+				{ threshold: [0, 0.85, 1] }
+			);
+			welltechObserver.observe(welltechPanelEl);
+		}
 		// Preload animated home-cover assets so first hover starts immediately.
 		void ensureKwitAnimation();
 		void ensureSoberoAnimation();
 		void ensureYazio01Animation();
 		void ensureYazio02Animation();
+		void ensureWelltechAnimation();
 
 		return () => {
 			removeSoberoHoverListeners?.();
 			removeKwitHoverListeners?.();
 			removeYazio01HoverListeners?.();
 			removeYazio02HoverListeners?.();
+			removeWelltechHoverListeners?.();
 			soberoObserver?.disconnect();
 			kwitObserver?.disconnect();
 			yazio01Observer?.disconnect();
 			yazio02Observer?.disconnect();
+			welltechObserver?.disconnect();
 			stopSoberoAnimation();
 			soberoAnimation?.destroy();
 			soberoAnimation = null;
@@ -625,6 +709,9 @@
 			stopYazio02Animation();
 			yazio02Animation?.destroy();
 			yazio02Animation = null;
+			stopWelltechAnimation();
+			welltechAnimation?.destroy();
+			welltechAnimation = null;
 			destroyHome?.();
 			destroyWork?.();
 		};
@@ -873,11 +960,16 @@
 			</div>
 		</div>
 		<div class="h-panel">
-			<div class="h-panel-bg">
+			<div class="h-panel-bg h-panel-bg--welltech" bind:this={welltechPanelEl}>
 				<img
 					src="/assets/welltech-cover.png"
 					alt="Product workflow board: hypothesis, specification, design phases with roles and pain points"
 				/>
+				<div
+					class="h-panel-lottie"
+					class:is-active={welltechAnimVisible}
+					bind:this={welltechAnimEl}
+				></div>
 			</div>
 		</div>
 	</div>
@@ -899,6 +991,7 @@
 						class:w-panel-bg--video={panel.video ||
 							panel.image ||
 							(panel.images && panel.images.length > 0)}
+						class:w-panel-bg--force-dark-label={panel.label === 'Modular product architecture'}
 						class:w-panel-bg--placeholder={!panel.video &&
 							!panel.image &&
 							!(panel.images && panel.images.length > 0)}
@@ -1008,7 +1101,13 @@
 								</video>
 							{/key}
 						{/if}
-						<span class="w-panel-label">{panel.label}</span>
+						<span
+							class="w-panel-label"
+							class:w-panel-label--dark={panel.label === 'Modular product architecture' ||
+								panel.label === 'Foundational research'}
+						>
+							{panel.label}
+						</span>
 					</div>
 				</div>
 			{/each}
@@ -1364,6 +1463,7 @@
 	.h-panel-bg--sobero .h-panel-lottie,
 	.h-panel-bg--yazio01 .h-panel-lottie,
 	.h-panel-bg--yazio02 .h-panel-lottie,
+	.h-panel-bg--welltech .h-panel-lottie,
 	.h-panel-bg--kwit .h-panel-lottie {
 		position: absolute;
 		inset: 0;
@@ -1374,12 +1474,14 @@
 	.h-panel-bg--sobero .h-panel-lottie.is-active,
 	.h-panel-bg--yazio01 .h-panel-lottie.is-active,
 	.h-panel-bg--yazio02 .h-panel-lottie.is-active,
+	.h-panel-bg--welltech .h-panel-lottie.is-active,
 	.h-panel-bg--kwit .h-panel-lottie.is-active {
 		opacity: 1;
 	}
 	.h-panel-bg--sobero .h-panel-lottie :global(svg),
 	.h-panel-bg--yazio01 .h-panel-lottie :global(svg),
 	.h-panel-bg--yazio02 .h-panel-lottie :global(svg),
+	.h-panel-bg--welltech .h-panel-lottie :global(svg),
 	.h-panel-bg--kwit .h-panel-lottie :global(svg) {
 		width: 100%;
 		height: 100%;
@@ -1510,7 +1612,7 @@
 		width: 100%;
 		min-width: 100%;
 		height: 100%;
-		object-fit: contain;
+		object-fit: cover;
 		object-position: center;
 		scroll-snap-align: start;
 		scroll-snap-stop: always;
@@ -1522,8 +1624,12 @@
 	}
 	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label,
 	.w-panel-bg--video:has(.w-panel-images) .w-panel-label {
-		color: #fff;
-		text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+		color: var(--black);
+		text-shadow: none;
+	}
+	.w-panel-bg--force-dark-label .w-panel-label {
+		color: var(--black);
+		text-shadow: none;
 	}
 	@media (hover: hover) and (pointer: fine) {
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img {
@@ -1538,10 +1644,15 @@
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--yazio02 img {
 			transform: scale(1);
 		}
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--welltech img {
+			transform: scale(1);
+		}
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--kwit img {
 			transform: scale(1);
 		}
-		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media,
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media {
+			transform: scale(1.06);
+		}
 		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-carousel-img {
 			transform: scale(1.06);
 		}
@@ -1612,6 +1723,10 @@
 	.w-panel-bg--video .w-panel-label {
 		color: var(--black);
 		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+	}
+	.w-panel-bg .w-panel-label.w-panel-label--dark {
+		color: var(--black) !important;
+		text-shadow: none !important;
 	}
 
 	#page-about {
