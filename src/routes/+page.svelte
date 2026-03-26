@@ -325,8 +325,9 @@
 		let shouldStart = false;
 		let hasStarted = false;
 		let revealTimer: number | null = null;
+		let isVideoReady = false;
 		const attemptPlayFromStart = () => {
-			if (!shouldStart || hasStarted) return;
+			if (!shouldStart || hasStarted || !isVideoReady) return;
 			node.muted = true;
 			node.playsInline = true;
 			try {
@@ -352,13 +353,24 @@
 				// Ignore while metadata is not yet available.
 			}
 		};
+		const revealWhenReady = () => {
+			isVideoReady = true;
+			node.style.visibility = 'visible';
+			node.style.opacity = '1';
+			attemptPlayFromStart();
+		};
 
 		node.muted = true;
 		node.playsInline = true;
+		node.style.visibility = 'hidden';
+		node.style.opacity = '0';
 		holdAtStartFrame();
 		node.load();
 		node.addEventListener('loadeddata', holdAtStartFrame);
 		node.addEventListener('canplay', holdAtStartFrame);
+		node.addEventListener('loadeddata', revealWhenReady);
+		node.addEventListener('canplay', revealWhenReady);
+		node.addEventListener('error', revealWhenReady);
 		node.addEventListener('loadeddata', attemptPlayFromStart);
 		node.addEventListener('canplay', attemptPlayFromStart);
 
@@ -382,6 +394,9 @@
 			destroy() {
 				node.removeEventListener('loadeddata', holdAtStartFrame);
 				node.removeEventListener('canplay', holdAtStartFrame);
+				node.removeEventListener('loadeddata', revealWhenReady);
+				node.removeEventListener('canplay', revealWhenReady);
+				node.removeEventListener('error', revealWhenReady);
 				node.removeEventListener('loadeddata', attemptPlayFromStart);
 				node.removeEventListener('canplay', attemptPlayFromStart);
 				if (revealTimer !== null) window.clearTimeout(revealTimer);
