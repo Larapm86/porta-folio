@@ -357,13 +357,16 @@
 			isVideoReady = true;
 			node.style.visibility = 'visible';
 			node.style.opacity = '1';
+			node.style.transform = 'scale(1)';
 			attemptPlayFromStart();
 		};
 
 		node.muted = true;
 		node.playsInline = true;
+		node.style.transition = 'opacity 280ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1)';
 		node.style.visibility = 'hidden';
 		node.style.opacity = '0';
+		node.style.transform = 'scale(0.985)';
 		holdAtStartFrame();
 		node.load();
 		node.addEventListener('loadeddata', holdAtStartFrame);
