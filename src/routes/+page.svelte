@@ -857,7 +857,7 @@
 					</a>
 				</div>
 			</div>
-			<div class="mob-foot">Barcelona, Spain<br />Available for projects</div>
+			<div class="mob-foot">Alicante, Spain<br />Available for projects</div>
 		</div>
 	</div>
 </header>
@@ -1145,7 +1145,7 @@
 				I believe good design lives at the edge between what is said and what is felt - and that the
 				best work never shouts.
 			</p>
-			<p>Based in Barcelona. Currently open to new projects.</p>
+			<p>Based in Alicante. Currently open to new projects.</p>
 		</div>
 		<div class="about-skills">
 			<div class="about-info-block">
@@ -1490,18 +1490,6 @@
 		to {
 			opacity: 1;
 			transform: translateY(0);
-		}
-	}
-	@media (prefers-reduced-motion: reduce) {
-		#page-work.active .w-panel {
-			opacity: 1;
-			transform: none;
-			animation: none;
-		}
-		#page-home.active .h-panel {
-			opacity: 1;
-			transform: none;
-			animation: none;
 		}
 	}
 	.h-panel-bg,
