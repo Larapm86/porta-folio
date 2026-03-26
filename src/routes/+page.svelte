@@ -350,6 +350,7 @@
 		const work = document.getElementById('strip-work');
 		let destroyHome: (() => void) | undefined;
 		let destroyWork: (() => void) | undefined;
+		let soberoObserver: IntersectionObserver | null = null;
 		let kwitObserver: IntersectionObserver | null = null;
 		let removeSoberoHoverListeners: (() => void) | undefined;
 		let removeKwitHoverListeners: (() => void) | undefined;
@@ -391,6 +392,22 @@
 			);
 			kwitObserver.observe(kwitPanelEl);
 		}
+		if (soberoPanelEl) {
+			soberoObserver = new IntersectionObserver(
+				(entries) => {
+					if (!isCoarsePointerDevice()) return;
+					const entry = entries[0];
+					if (!entry) return;
+					if (entry.intersectionRatio >= 0.98) {
+						void playSoberoAnimation();
+						return;
+					}
+					stopSoberoAnimation();
+				},
+				{ threshold: [0, 0.98, 1] }
+			);
+			soberoObserver.observe(soberoPanelEl);
+		}
 		// Preload animated home-cover assets so first hover starts immediately.
 		void ensureKwitAnimation();
 		void ensureSoberoAnimation();
@@ -398,6 +415,7 @@
 		return () => {
 			removeSoberoHoverListeners?.();
 			removeKwitHoverListeners?.();
+			soberoObserver?.disconnect();
 			kwitObserver?.disconnect();
 			stopSoberoAnimation();
 			soberoAnimation?.destroy();
@@ -584,7 +602,7 @@
 				onkeydown={(e) => chipOpenProject(e, 'Time-to-Value')}
 			>
 				{@render chipLetters('time-to-value')}
-			</span>, and meaningful
+			</span>, and crafted meaningful
 			<span
 				role="button"
 				tabindex="0"
