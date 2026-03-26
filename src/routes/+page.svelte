@@ -10,22 +10,12 @@
 	};
 	let { initialActivePage = 'home', initialProject = 'UX Maturity' }: PageProps = $props();
 
-	let activePage = $state<PageKey>('home');
-	let currentProject = $state('UX Maturity');
-	let appliedInitialPage = $state<PageKey | null>(null);
-	let appliedInitialProject = $state<string | null>(null);
-	$effect(() => {
-		const nextPage: PageKey =
-			initialActivePage === 'work' || initialActivePage === 'about' ? initialActivePage : 'home';
-		const nextProject = Object.prototype.hasOwnProperty.call(PROJECTS, initialProject)
-			? initialProject
-			: 'UX Maturity';
-		if (appliedInitialPage === nextPage && appliedInitialProject === nextProject) return;
-		activePage = nextPage;
-		currentProject = nextProject;
-		appliedInitialPage = nextPage;
-		appliedInitialProject = nextProject;
-	});
+	const activePage = $derived.by<PageKey>(() =>
+		initialActivePage === 'work' || initialActivePage === 'about' ? initialActivePage : 'home'
+	);
+	const currentProject = $derived.by<string>(() =>
+		Object.prototype.hasOwnProperty.call(PROJECTS, initialProject) ? initialProject : 'UX Maturity'
+	);
 	let mobileOpen = $state(false);
 	let soberoPanelEl: HTMLDivElement | null = null;
 	let soberoAnimEl: HTMLDivElement | null = null;
@@ -52,11 +42,6 @@
 	let welltechAnimVisible = $state(false);
 	let welltechAnimation: import('lottie-web').AnimationItem | null = null;
 	let welltechMobileInView = false;
-
-	function show(id: PageKey, project: string | null = null) {
-		activePage = id;
-		if (id === 'work' && project) currentProject = project;
-	}
 
 	function closeMob() {
 		mobileOpen = false;
@@ -1024,7 +1009,6 @@
 							{#key `${currentProject}-${panel.label}-${panel.video.src}`}
 								<video
 									class="w-panel-media w-panel-media--file"
-									controls
 									playsinline
 									preload="auto"
 									autoplay
