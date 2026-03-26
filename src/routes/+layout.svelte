@@ -1,5 +1,8 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	let { children } = $props();
 </script>
 
-{@render children()}
+{#key page.url.pathname}
+	{@render children()}
+{/key}

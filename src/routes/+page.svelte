@@ -320,6 +320,75 @@
 		return track.querySelectorAll('.w-panel-carousel-img').length;
 	}
 
+	function startVideoOnDominoReveal(node: HTMLVideoElement) {
+		const panel = node.closest('.w-panel');
+		let shouldStart = false;
+		let hasStarted = false;
+		let revealTimer: number | null = null;
+		const attemptPlayFromStart = () => {
+			if (!shouldStart || hasStarted) return;
+			node.muted = true;
+			node.playsInline = true;
+			try {
+				node.currentTime = 0;
+			} catch {
+				// Some browsers may block currentTime until metadata is ready.
+			}
+			void node
+				.play()
+				.then(() => {
+					hasStarted = true;
+				})
+				.catch(() => {
+					// Autoplay can fail transiently; ready events below will retry.
+				});
+		};
+		const holdAtStartFrame = () => {
+			if (shouldStart) return;
+			try {
+				node.pause();
+				node.currentTime = 0;
+			} catch {
+				// Ignore while metadata is not yet available.
+			}
+		};
+
+		node.muted = true;
+		node.playsInline = true;
+		holdAtStartFrame();
+		node.load();
+		node.addEventListener('loadeddata', holdAtStartFrame);
+		node.addEventListener('canplay', holdAtStartFrame);
+		node.addEventListener('loadeddata', attemptPlayFromStart);
+		node.addEventListener('canplay', attemptPlayFromStart);
+
+		// Start based on the same domino schedule as CSS so video playback is deterministic.
+		const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		if (!panel || prefersReduced) {
+			shouldStart = true;
+			void Promise.resolve().then(attemptPlayFromStart);
+		} else {
+			const rawIndex = getComputedStyle(panel).getPropertyValue('--panel-index').trim();
+			const panelIndex = Number.isFinite(Number(rawIndex)) ? Number(rawIndex) : 0;
+			// Match CSS domino schedule: start playback when panel entrance finishes.
+			const revealDelayMs = 800 + panelIndex * 105 + 820;
+			revealTimer = window.setTimeout(() => {
+				shouldStart = true;
+				attemptPlayFromStart();
+			}, revealDelayMs);
+		}
+
+		return {
+			destroy() {
+				node.removeEventListener('loadeddata', holdAtStartFrame);
+				node.removeEventListener('canplay', holdAtStartFrame);
+				node.removeEventListener('loadeddata', attemptPlayFromStart);
+				node.removeEventListener('canplay', attemptPlayFromStart);
+				if (revealTimer !== null) window.clearTimeout(revealTimer);
+			}
+		};
+	}
+
 	function syncCarouselArrows(track: HTMLElement) {
 		const wrap = track.closest('.w-panel-carousel');
 		if (!wrap) return;
@@ -839,7 +908,7 @@
 	</div>
 
 	<div class="home-strip" id="strip-home">
-		<div class="h-panel">
+		<div class="h-panel" style="--panel-index: 0;">
 			<div class="h-panel-bg h-panel-bg--sobero" bind:this={soberoPanelEl}>
 				<img src="/assets/sobero-cover.png" alt="Sobero" />
 				<div
@@ -849,7 +918,7 @@
 				></div>
 			</div>
 		</div>
-		<div class="h-panel">
+		<div class="h-panel" style="--panel-index: 1;">
 			<div class="h-panel-bg h-panel-bg--kwit" bind:this={kwitPanelEl}>
 				<img
 					src="/assets/kwit-cover.png"
@@ -858,7 +927,7 @@
 				<div class="h-panel-lottie" class:is-active={kwitAnimVisible} bind:this={kwitAnimEl}></div>
 			</div>
 		</div>
-		<div class="h-panel">
+		<div class="h-panel" style="--panel-index: 2;">
 			<div class="h-panel-bg h-panel-bg--yazio01" bind:this={yazio01PanelEl}>
 				<img
 					src="/assets/yazio-cover.png"
@@ -871,7 +940,7 @@
 				></div>
 			</div>
 		</div>
-		<div class="h-panel">
+		<div class="h-panel" style="--panel-index: 3;">
 			<div class="h-panel-bg h-panel-bg--yazio02" bind:this={yazio02PanelEl}>
 				<img
 					src="/assets/yazio-cover-02.png"
@@ -884,7 +953,7 @@
 				></div>
 			</div>
 		</div>
-		<div class="h-panel">
+		<div class="h-panel" style="--panel-index: 4;">
 			<div class="h-panel-bg h-panel-bg--welltech" bind:this={welltechPanelEl}>
 				<img
 					src="/assets/welltech-cover.png"
@@ -909,132 +978,135 @@
 
 	<div class="work-strip-wrap">
 		<div class="work-strip" id="strip-work">
-			{#each PROJECTS[currentProject].panels as panel}
-				<div class="w-panel">
-					<div
-						class="w-panel-bg"
-						class:w-panel-bg--video={panel.video ||
-							panel.image ||
-							(panel.images && panel.images.length > 0)}
-						class:w-panel-bg--force-dark-label={panel.label === 'Modular product architecture'}
-						class:w-panel-bg--placeholder={!panel.video &&
-							!panel.image &&
-							!(panel.images && panel.images.length > 0)}
-					>
-						{#if panel.images && panel.images.length > 0}
-							<div class="w-panel-carousel">
-								<button
-									type="button"
-									class="w-panel-carousel-btn w-panel-carousel-btn--prev"
-									aria-label="Previous image"
-									onclick={(e) => carouselStep(e, -1)}
-								>
-									<svg class="w-panel-carousel-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
-										<path
-											d="M14.5 17.5 8 12l6.5-5.5"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="1.5"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											vector-effect="non-scaling-stroke"
-										/>
-									</svg>
-								</button>
-								<div
-									class="w-panel-images"
-									role="group"
-									aria-roledescription="carousel"
-									aria-label={`${panel.label} — use the arrows to move between images`}
-									title="Use the side arrows to change image"
-									onscroll={(e) => syncCarouselArrows(e.currentTarget as HTMLElement)}
-								>
-									{#each panel.images as src, i}
-										<img
-											class="w-panel-carousel-img"
-											{src}
-											alt="{panel.label} {i + 1}"
-											loading={i === 0 ? 'eager' : 'lazy'}
-											draggable="false"
-										/>
-									{/each}
-								</div>
-								<button
-									type="button"
-									class="w-panel-carousel-btn w-panel-carousel-btn--next"
-									aria-label="Next image"
-									onclick={(e) => carouselStep(e, 1)}
-								>
-									<svg class="w-panel-carousel-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
-										<path
-											d="M9.5 17.5 16 12l-6.5-5.5"
-											fill="none"
-											stroke="currentColor"
-											stroke-width="1.5"
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											vector-effect="non-scaling-stroke"
-										/>
-									</svg>
-								</button>
-							</div>
-						{:else if panel.image}
-							<img
-								class="w-panel-media w-panel-media--image"
-								src={panel.image}
-								alt={panel.label}
-								loading="lazy"
-							/>
-						{:else if panel.video?.type === 'youtube'}
-							<iframe
-								class="w-panel-media"
-								title={panel.label}
-								src="https://www.youtube-nocookie.com/embed/{panel.video.id}?rel=0&modestbranding=1"
-								allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-								allowfullscreen
-								referrerpolicy="strict-origin-when-cross-origin"
-								loading="lazy"
-							></iframe>
-						{:else if panel.video?.type === 'vimeo'}
-							<iframe
-								class="w-panel-media"
-								title={panel.label}
-								src="https://player.vimeo.com/video/{panel.video.id}?dnt=1"
-								allow="autoplay; fullscreen; picture-in-picture"
-								allowfullscreen
-								referrerpolicy="strict-origin-when-cross-origin"
-								loading="lazy"
-							></iframe>
-						{:else if panel.video?.type === 'file'}
-							{#key `${currentProject}-${panel.label}-${panel.video.src}`}
-								<video
-									class="w-panel-media w-panel-media--file"
-									playsinline
-									preload="auto"
-									autoplay
-									muted
-									loop
-									poster={panel.video.poster ?? undefined}
-								>
-									<source
-										src={panel.video.src}
-										type={panel.video.src.split('?')[0].toLowerCase().endsWith('.mov')
-											? 'video/quicktime'
-											: undefined}
-									/>
-								</video>
-							{/key}
-						{/if}
-						<span
-							class="w-panel-label"
-							class:w-panel-label--dark={panel.label === 'Modular product architecture' ||
-								panel.label === 'Foundational research'}
+			{#key currentProject}
+				{#each PROJECTS[currentProject].panels as panel, i}
+					<div class="w-panel" style={`--panel-index: ${i};`}>
+						<div
+							class="w-panel-bg"
+							class:w-panel-bg--video={panel.video ||
+								panel.image ||
+								(panel.images && panel.images.length > 0)}
+							class:w-panel-bg--force-dark-label={panel.label === 'Modular product architecture'}
+							class:w-panel-bg--placeholder={!panel.video &&
+								!panel.image &&
+								!(panel.images && panel.images.length > 0)}
 						>
-							{panel.label}
-						</span>
+							{#if panel.images && panel.images.length > 0}
+								<div class="w-panel-carousel">
+									<button
+										type="button"
+										class="w-panel-carousel-btn w-panel-carousel-btn--prev"
+										aria-label="Previous image"
+										onclick={(e) => carouselStep(e, -1)}
+									>
+										<svg class="w-panel-carousel-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+											<path
+												d="M14.5 17.5 8 12l6.5-5.5"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												vector-effect="non-scaling-stroke"
+											/>
+										</svg>
+									</button>
+									<div
+										class="w-panel-images"
+										role="group"
+										aria-roledescription="carousel"
+										aria-label={`${panel.label} — use the arrows to move between images`}
+										title="Use the side arrows to change image"
+										onscroll={(e) => syncCarouselArrows(e.currentTarget as HTMLElement)}
+									>
+										{#each panel.images as src, i}
+											<img
+												class="w-panel-carousel-img"
+												{src}
+												alt="{panel.label} {i + 1}"
+												loading={i === 0 ? 'eager' : 'lazy'}
+												draggable="false"
+											/>
+										{/each}
+									</div>
+									<button
+										type="button"
+										class="w-panel-carousel-btn w-panel-carousel-btn--next"
+										aria-label="Next image"
+										onclick={(e) => carouselStep(e, 1)}
+									>
+										<svg class="w-panel-carousel-btn__icon" viewBox="0 0 24 24" aria-hidden="true">
+											<path
+												d="M9.5 17.5 16 12l-6.5-5.5"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="1.5"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												vector-effect="non-scaling-stroke"
+											/>
+										</svg>
+									</button>
+								</div>
+							{:else if panel.image}
+								<img
+									class="w-panel-media w-panel-media--image"
+									src={panel.image}
+									alt={panel.label}
+									loading="lazy"
+								/>
+							{:else if panel.video?.type === 'youtube'}
+								<iframe
+									class="w-panel-media"
+									title={panel.label}
+									src="https://www.youtube-nocookie.com/embed/{panel.video.id}?rel=0&modestbranding=1"
+									allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+									allowfullscreen
+									referrerpolicy="strict-origin-when-cross-origin"
+									loading="lazy"
+								></iframe>
+							{:else if panel.video?.type === 'vimeo'}
+								<iframe
+									class="w-panel-media"
+									title={panel.label}
+									src="https://player.vimeo.com/video/{panel.video.id}?dnt=1"
+									allow="autoplay; fullscreen; picture-in-picture"
+									allowfullscreen
+									referrerpolicy="strict-origin-when-cross-origin"
+									loading="lazy"
+								></iframe>
+							{:else if panel.video?.type === 'file'}
+								{#key `${currentProject}-${panel.label}-${panel.video.src}`}
+									<video
+										class="w-panel-media w-panel-media--file"
+										use:startVideoOnDominoReveal
+										playsinline
+										preload="auto"
+										autoplay
+										muted
+										loop
+										poster={panel.video.poster ?? undefined}
+									>
+										<source
+											src={panel.video.src}
+											type={panel.video.src.split('?')[0].toLowerCase().endsWith('.mov')
+												? 'video/quicktime'
+												: undefined}
+										/>
+									</video>
+								{/key}
+							{/if}
+							<span
+								class="w-panel-label"
+								class:w-panel-label--dark={panel.label === 'Modular product architecture' ||
+									panel.label === 'Foundational research'}
+							>
+								{panel.label}
+							</span>
+						</div>
 					</div>
-				</div>
-			{/each}
+				{/each}
+			{/key}
 		</div>
 	</div>
 </div>
@@ -1363,6 +1435,54 @@
 		height: 100%;
 		padding-right: var(--px);
 		padding-bottom: var(--px);
+	}
+	#page-work.active .w-panel {
+		opacity: 0;
+		transform: translateY(14px);
+		animation: work-panel-domino-in 0.82s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+		animation-delay: calc(var(--panel-index, 0) * 105ms + 800ms);
+	}
+	#page-home.active .h-panel {
+		opacity: 0;
+		transform: translateY(14px);
+		animation: home-panel-domino-in 0.82s cubic-bezier(0.2, 0.9, 0.2, 1) forwards;
+		animation-delay: calc(var(--panel-index, 0) * 105ms + 800ms);
+	}
+	@keyframes home-panel-domino-in {
+		from {
+			opacity: 0;
+			transform: translateY(14px);
+		}
+		1% {
+			opacity: 1;
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	@keyframes work-panel-domino-in {
+		from {
+			opacity: 0;
+			transform: translateY(14px);
+		}
+		1% {
+			opacity: 1;
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		#page-work.active .w-panel {
+			transform: none;
+			animation: none;
+		}
+		#page-home.active .h-panel {
+			transform: none;
+			animation: none;
+		}
 	}
 	.h-panel-bg,
 	.w-panel-bg {
