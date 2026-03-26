@@ -1494,10 +1494,12 @@
 	}
 	@media (prefers-reduced-motion: reduce) {
 		#page-work.active .w-panel {
+			opacity: 1;
 			transform: none;
 			animation: none;
 		}
 		#page-home.active .h-panel {
+			opacity: 1;
 			transform: none;
 			animation: none;
 		}
