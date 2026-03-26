@@ -123,10 +123,12 @@
 	let yazio01AnimEl: HTMLDivElement | null = null;
 	let yazio01AnimVisible = $state(false);
 	let yazio01Animation: import('lottie-web').AnimationItem | null = null;
+	let yazio01MobileInView = false;
 	let yazio02PanelEl: HTMLDivElement | null = null;
 	let yazio02AnimEl: HTMLDivElement | null = null;
 	let yazio02AnimVisible = $state(false);
 	let yazio02Animation: import('lottie-web').AnimationItem | null = null;
+	let yazio02MobileInView = false;
 
 	function show(id: string, project: string | null = null) {
 		activePage = id;
@@ -271,6 +273,13 @@
 		yazio01Animation?.goToAndPlay(0, true);
 	}
 
+	async function playYazio01AnimationOnce() {
+		await ensureYazio01Animation();
+		yazio01AnimVisible = true;
+		yazio01Animation?.setLoop(false);
+		yazio01Animation?.goToAndPlay(0, true);
+	}
+
 	function stopYazio01Animation() {
 		yazio01Animation?.stop();
 		yazio01Animation?.goToAndStop(0, true);
@@ -308,6 +317,13 @@
 		await ensureYazio02Animation();
 		yazio02AnimVisible = true;
 		yazio02Animation?.setLoop(true);
+		yazio02Animation?.goToAndPlay(0, true);
+	}
+
+	async function playYazio02AnimationOnce() {
+		await ensureYazio02Animation();
+		yazio02AnimVisible = true;
+		yazio02Animation?.setLoop(false);
 		yazio02Animation?.goToAndPlay(0, true);
 	}
 
@@ -458,6 +474,8 @@
 		let destroyWork: (() => void) | undefined;
 		let soberoObserver: IntersectionObserver | null = null;
 		let kwitObserver: IntersectionObserver | null = null;
+		let yazio01Observer: IntersectionObserver | null = null;
+		let yazio02Observer: IntersectionObserver | null = null;
 		let removeSoberoHoverListeners: (() => void) | undefined;
 		let removeKwitHoverListeners: (() => void) | undefined;
 		let removeYazio01HoverListeners: (() => void) | undefined;
@@ -542,6 +560,44 @@
 			);
 			soberoObserver.observe(soberoPanelEl);
 		}
+		if (yazio01PanelEl) {
+			yazio01Observer = new IntersectionObserver(
+				(entries) => {
+					if (!isCoarsePointerDevice()) return;
+					const entry = entries[0];
+					if (!entry) return;
+					if (entry.intersectionRatio >= 0.98) {
+						if (yazio01MobileInView) return;
+						yazio01MobileInView = true;
+						void playYazio01AnimationOnce();
+						return;
+					}
+					yazio01MobileInView = false;
+					stopYazio01Animation();
+				},
+				{ threshold: [0, 0.98, 1] }
+			);
+			yazio01Observer.observe(yazio01PanelEl);
+		}
+		if (yazio02PanelEl) {
+			yazio02Observer = new IntersectionObserver(
+				(entries) => {
+					if (!isCoarsePointerDevice()) return;
+					const entry = entries[0];
+					if (!entry) return;
+					if (entry.intersectionRatio >= 0.98) {
+						if (yazio02MobileInView) return;
+						yazio02MobileInView = true;
+						void playYazio02AnimationOnce();
+						return;
+					}
+					yazio02MobileInView = false;
+					stopYazio02Animation();
+				},
+				{ threshold: [0, 0.98, 1] }
+			);
+			yazio02Observer.observe(yazio02PanelEl);
+		}
 		// Preload animated home-cover assets so first hover starts immediately.
 		void ensureKwitAnimation();
 		void ensureSoberoAnimation();
@@ -555,6 +611,8 @@
 			removeYazio02HoverListeners?.();
 			soberoObserver?.disconnect();
 			kwitObserver?.disconnect();
+			yazio01Observer?.disconnect();
+			yazio02Observer?.disconnect();
 			stopSoberoAnimation();
 			soberoAnimation?.destroy();
 			soberoAnimation = null;
@@ -1244,7 +1302,7 @@
 		}
 	}
 	.chip:hover {
-		background: rgba(0, 0, 0, 0.1);
+		background: rgba(0, 0, 0, 0.16);
 	}
 	.chip:focus-visible {
 		outline: 2px solid var(--black);
