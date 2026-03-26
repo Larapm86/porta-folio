@@ -56,9 +56,9 @@
 				{
 					label: 'Concept',
 					images: [
+						'/assets/sobero-illustrations.png',
 						'/assets/sobero-icons-default.png',
 						'/assets/sobero-icons-selected.png',
-						'/assets/sobero-illustrations.png',
 						'/assets/sobero-scenes.png',
 						'/assets/sobero-pictograms.png'
 					]
@@ -67,8 +67,8 @@
 					label: 'UX Design',
 					images: [
 						'/assets/sobero-strategy-01.png',
-						'/assets/sobero-strategy-02.png',
-						'/assets/sobero-strategy-03.png'
+						'/assets/sobero-strategy-03.png',
+						'/assets/sobero-strategy-02.png'
 					]
 				},
 				{ label: 'Launch' }
@@ -109,6 +109,14 @@
 	let activePage = $state('home');
 	let currentProject = $state('UX Maturity');
 	let mobileOpen = $state(false);
+	let soberoPanelEl: HTMLDivElement | null = null;
+	let soberoAnimEl: HTMLDivElement | null = null;
+	let soberoAnimVisible = $state(false);
+	let soberoAnimation: import('lottie-web').AnimationItem | null = null;
+	let kwitPanelEl: HTMLDivElement | null = null;
+	let kwitAnimEl: HTMLDivElement | null = null;
+	let kwitAnimVisible = $state(false);
+	let kwitAnimation: import('lottie-web').AnimationItem | null = null;
 
 	function show(id: string, project: string | null = null) {
 		activePage = id;
@@ -131,11 +139,92 @@
 		}
 	}
 
+	function isCoarsePointerDevice(): boolean {
+		return typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches;
+	}
+
+	async function ensureKwitAnimation() {
+		if (!kwitAnimEl || kwitAnimation) return;
+		const lottieModule = await import('lottie-web');
+		const lottie = lottieModule.default;
+		kwitAnimation = lottie.loadAnimation({
+			container: kwitAnimEl,
+			renderer: 'svg',
+			loop: true,
+			autoplay: false,
+			path: '/assets/kwit-cover-hover.json',
+			rendererSettings: {
+				preserveAspectRatio: 'xMidYMid slice'
+			}
+		});
+		kwitAnimation.goToAndStop(0, true);
+	}
+
+	async function playKwitAnimation() {
+		await ensureKwitAnimation();
+		kwitAnimVisible = true;
+		kwitAnimation?.goToAndPlay(0, true);
+	}
+
+	function stopKwitAnimation() {
+		kwitAnimation?.stop();
+		kwitAnimation?.goToAndStop(0, true);
+		kwitAnimVisible = false;
+	}
+
+	function onKwitHoverStart() {
+		if (isCoarsePointerDevice()) return;
+		void playKwitAnimation();
+	}
+
+	function onKwitHoverEnd() {
+		if (isCoarsePointerDevice()) return;
+		stopKwitAnimation();
+	}
+
+	async function ensureSoberoAnimation() {
+		if (!soberoAnimEl || soberoAnimation) return;
+		const lottieModule = await import('lottie-web');
+		const lottie = lottieModule.default;
+		soberoAnimation = lottie.loadAnimation({
+			container: soberoAnimEl,
+			renderer: 'svg',
+			loop: true,
+			autoplay: false,
+			path: '/assets/sobero-cover-hover.json',
+			rendererSettings: {
+				preserveAspectRatio: 'xMidYMid slice'
+			}
+		});
+		soberoAnimation.goToAndStop(0, true);
+	}
+
+	async function playSoberoAnimation() {
+		await ensureSoberoAnimation();
+		soberoAnimVisible = true;
+		soberoAnimation?.goToAndPlay(0, true);
+	}
+
+	function stopSoberoAnimation() {
+		soberoAnimation?.stop();
+		soberoAnimation?.goToAndStop(0, true);
+		soberoAnimVisible = false;
+	}
+
+	function onSoberoHoverStart() {
+		if (isCoarsePointerDevice()) return;
+		void playSoberoAnimation();
+	}
+
+	function onSoberoHoverEnd() {
+		if (isCoarsePointerDevice()) return;
+		stopSoberoAnimation();
+	}
+
 	function carouselStepPx(track: HTMLElement): number {
-		const img = track.querySelector('.w-panel-carousel-img') as HTMLElement | null;
-		if (!img) return track.clientWidth;
-		const gap = parseFloat(getComputedStyle(track).gap || '0') || 0;
-		return img.offsetWidth + gap;
+		// Slides are full-width (`flex: 0 0 100%` / `width: 100%`), so using the track width
+		// avoids off-by-a-few-pixels rounding that can cause the snap to pick the same slide.
+		return track.clientWidth || 0;
 	}
 
 	function syncCarouselArrows(track: HTMLElement) {
@@ -174,6 +263,9 @@
 		if (activePage !== 'work') return;
 		tick().then(() => {
 			document.querySelectorAll('.w-panel-images').forEach((node) => {
+				// Ensure each carousel starts from the first slide when opening/changing projects.
+				// Otherwise, leftover `scrollLeft` can make "placeholder positions" appear incorrect.
+				(node as HTMLElement).scrollLeft = 0;
 				syncCarouselArrows(node as HTMLElement);
 			});
 		});
@@ -258,10 +350,61 @@
 		const work = document.getElementById('strip-work');
 		let destroyHome: (() => void) | undefined;
 		let destroyWork: (() => void) | undefined;
+		let kwitObserver: IntersectionObserver | null = null;
+		let removeSoberoHoverListeners: (() => void) | undefined;
+		let removeKwitHoverListeners: (() => void) | undefined;
 		if (home) destroyHome = dragScroll(home);
 		if (work) destroyWork = dragScroll(work);
+		if (soberoPanelEl) {
+			const onEnter = () => onSoberoHoverStart();
+			const onLeave = () => onSoberoHoverEnd();
+			soberoPanelEl.addEventListener('mouseenter', onEnter);
+			soberoPanelEl.addEventListener('mouseleave', onLeave);
+			removeSoberoHoverListeners = () => {
+				soberoPanelEl?.removeEventListener('mouseenter', onEnter);
+				soberoPanelEl?.removeEventListener('mouseleave', onLeave);
+			};
+		}
+		if (kwitPanelEl) {
+			const onEnter = () => onKwitHoverStart();
+			const onLeave = () => onKwitHoverEnd();
+			kwitPanelEl.addEventListener('mouseenter', onEnter);
+			kwitPanelEl.addEventListener('mouseleave', onLeave);
+			removeKwitHoverListeners = () => {
+				kwitPanelEl?.removeEventListener('mouseenter', onEnter);
+				kwitPanelEl?.removeEventListener('mouseleave', onLeave);
+			};
+		}
+		if (kwitPanelEl) {
+			kwitObserver = new IntersectionObserver(
+				(entries) => {
+					if (!isCoarsePointerDevice()) return;
+					const entry = entries[0];
+					if (!entry) return;
+					if (entry.intersectionRatio >= 0.98) {
+						void playKwitAnimation();
+						return;
+					}
+					stopKwitAnimation();
+				},
+				{ threshold: [0, 0.98, 1] }
+			);
+			kwitObserver.observe(kwitPanelEl);
+		}
+		// Preload animated home-cover assets so first hover starts immediately.
+		void ensureKwitAnimation();
+		void ensureSoberoAnimation();
 
 		return () => {
+			removeSoberoHoverListeners?.();
+			removeKwitHoverListeners?.();
+			kwitObserver?.disconnect();
+			stopSoberoAnimation();
+			soberoAnimation?.destroy();
+			soberoAnimation = null;
+			stopKwitAnimation();
+			kwitAnimation?.destroy();
+			kwitAnimation = null;
 			destroyHome?.();
 			destroyWork?.();
 		};
@@ -465,16 +608,22 @@
 
 	<div class="home-strip" id="strip-home">
 		<div class="h-panel">
-			<div class="h-panel-bg">
+			<div class="h-panel-bg h-panel-bg--sobero" bind:this={soberoPanelEl}>
 				<img src="/assets/sobero-cover.png" alt="Sobero" />
+				<div
+					class="h-panel-lottie"
+					class:is-active={soberoAnimVisible}
+					bind:this={soberoAnimEl}
+				></div>
 			</div>
 		</div>
 		<div class="h-panel">
-			<div class="h-panel-bg">
+			<div class="h-panel-bg h-panel-bg--kwit" bind:this={kwitPanelEl}>
 				<img
 					src="/assets/kwit-cover.png"
 					alt="Kwit app with World Health Organization validation"
 				/>
+				<div class="h-panel-lottie" class:is-active={kwitAnimVisible} bind:this={kwitAnimEl}></div>
 			</div>
 		</div>
 		<div class="h-panel">
@@ -982,6 +1131,24 @@
 		transform: scale(1);
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
+	.h-panel-bg--sobero .h-panel-lottie,
+	.h-panel-bg--kwit .h-panel-lottie {
+		position: absolute;
+		inset: 0;
+		pointer-events: none;
+		opacity: 0;
+		transition: opacity 0.28s ease;
+	}
+	.h-panel-bg--sobero .h-panel-lottie.is-active,
+	.h-panel-bg--kwit .h-panel-lottie.is-active {
+		opacity: 1;
+	}
+	.h-panel-bg--sobero .h-panel-lottie :global(svg),
+	.h-panel-bg--kwit .h-panel-lottie :global(svg) {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
 	.w-panel-bg--placeholder {
 		background: var(--cream);
 	}
@@ -1091,12 +1258,12 @@
 		display: flex;
 		flex-flow: row nowrap;
 		gap: 0;
-		overflow-x: hidden;
+		overflow-x: auto;
 		overflow-y: hidden;
 		scroll-snap-type: x mandatory;
 		scrollbar-width: none;
 		overscroll-behavior-x: none;
-		touch-action: manipulation;
+		touch-action: none;
 		pointer-events: none;
 	}
 	.w-panel-images::-webkit-scrollbar {
@@ -1125,6 +1292,12 @@
 	@media (hover: hover) and (pointer: fine) {
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg img {
 			transform: scale(1.06);
+		}
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--sobero img {
+			transform: scale(1);
+		}
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--kwit img {
+			transform: scale(1);
 		}
 		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media,
 		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-carousel-img {
