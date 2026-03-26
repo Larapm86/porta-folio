@@ -113,10 +113,20 @@
 	let soberoAnimEl: HTMLDivElement | null = null;
 	let soberoAnimVisible = $state(false);
 	let soberoAnimation: import('lottie-web').AnimationItem | null = null;
+	let soberoMobileInView = false;
 	let kwitPanelEl: HTMLDivElement | null = null;
 	let kwitAnimEl: HTMLDivElement | null = null;
 	let kwitAnimVisible = $state(false);
 	let kwitAnimation: import('lottie-web').AnimationItem | null = null;
+	let kwitMobileInView = false;
+	let yazio01PanelEl: HTMLDivElement | null = null;
+	let yazio01AnimEl: HTMLDivElement | null = null;
+	let yazio01AnimVisible = $state(false);
+	let yazio01Animation: import('lottie-web').AnimationItem | null = null;
+	let yazio02PanelEl: HTMLDivElement | null = null;
+	let yazio02AnimEl: HTMLDivElement | null = null;
+	let yazio02AnimVisible = $state(false);
+	let yazio02Animation: import('lottie-web').AnimationItem | null = null;
 
 	function show(id: string, project: string | null = null) {
 		activePage = id;
@@ -163,6 +173,14 @@
 	async function playKwitAnimation() {
 		await ensureKwitAnimation();
 		kwitAnimVisible = true;
+		kwitAnimation?.setLoop(true);
+		kwitAnimation?.goToAndPlay(0, true);
+	}
+
+	async function playKwitAnimationOnce() {
+		await ensureKwitAnimation();
+		kwitAnimVisible = true;
+		kwitAnimation?.setLoop(false);
 		kwitAnimation?.goToAndPlay(0, true);
 	}
 
@@ -202,6 +220,14 @@
 	async function playSoberoAnimation() {
 		await ensureSoberoAnimation();
 		soberoAnimVisible = true;
+		soberoAnimation?.setLoop(true);
+		soberoAnimation?.goToAndPlay(0, true);
+	}
+
+	async function playSoberoAnimationOnce() {
+		await ensureSoberoAnimation();
+		soberoAnimVisible = true;
+		soberoAnimation?.setLoop(false);
 		soberoAnimation?.goToAndPlay(0, true);
 	}
 
@@ -219,6 +245,86 @@
 	function onSoberoHoverEnd() {
 		if (isCoarsePointerDevice()) return;
 		stopSoberoAnimation();
+	}
+
+	async function ensureYazio01Animation() {
+		if (!yazio01AnimEl || yazio01Animation) return;
+		const lottieModule = await import('lottie-web');
+		const lottie = lottieModule.default;
+		yazio01Animation = lottie.loadAnimation({
+			container: yazio01AnimEl,
+			renderer: 'svg',
+			loop: true,
+			autoplay: false,
+			path: '/assets/yazio-cover-01-hover.json',
+			rendererSettings: {
+				preserveAspectRatio: 'xMidYMid slice'
+			}
+		});
+		yazio01Animation.goToAndStop(0, true);
+	}
+
+	async function playYazio01Animation() {
+		await ensureYazio01Animation();
+		yazio01AnimVisible = true;
+		yazio01Animation?.setLoop(true);
+		yazio01Animation?.goToAndPlay(0, true);
+	}
+
+	function stopYazio01Animation() {
+		yazio01Animation?.stop();
+		yazio01Animation?.goToAndStop(0, true);
+		yazio01AnimVisible = false;
+	}
+
+	function onYazio01HoverStart() {
+		if (isCoarsePointerDevice()) return;
+		void playYazio01Animation();
+	}
+
+	function onYazio01HoverEnd() {
+		if (isCoarsePointerDevice()) return;
+		stopYazio01Animation();
+	}
+
+	async function ensureYazio02Animation() {
+		if (!yazio02AnimEl || yazio02Animation) return;
+		const lottieModule = await import('lottie-web');
+		const lottie = lottieModule.default;
+		yazio02Animation = lottie.loadAnimation({
+			container: yazio02AnimEl,
+			renderer: 'svg',
+			loop: true,
+			autoplay: false,
+			path: '/assets/yazio-cover-02-hover.json',
+			rendererSettings: {
+				preserveAspectRatio: 'xMidYMid slice'
+			}
+		});
+		yazio02Animation.goToAndStop(0, true);
+	}
+
+	async function playYazio02Animation() {
+		await ensureYazio02Animation();
+		yazio02AnimVisible = true;
+		yazio02Animation?.setLoop(true);
+		yazio02Animation?.goToAndPlay(0, true);
+	}
+
+	function stopYazio02Animation() {
+		yazio02Animation?.stop();
+		yazio02Animation?.goToAndStop(0, true);
+		yazio02AnimVisible = false;
+	}
+
+	function onYazio02HoverStart() {
+		if (isCoarsePointerDevice()) return;
+		void playYazio02Animation();
+	}
+
+	function onYazio02HoverEnd() {
+		if (isCoarsePointerDevice()) return;
+		stopYazio02Animation();
 	}
 
 	function carouselStepPx(track: HTMLElement): number {
@@ -354,6 +460,8 @@
 		let kwitObserver: IntersectionObserver | null = null;
 		let removeSoberoHoverListeners: (() => void) | undefined;
 		let removeKwitHoverListeners: (() => void) | undefined;
+		let removeYazio01HoverListeners: (() => void) | undefined;
+		let removeYazio02HoverListeners: (() => void) | undefined;
 		if (home) destroyHome = dragScroll(home);
 		if (work) destroyWork = dragScroll(work);
 		if (soberoPanelEl) {
@@ -376,6 +484,26 @@
 				kwitPanelEl?.removeEventListener('mouseleave', onLeave);
 			};
 		}
+		if (yazio01PanelEl) {
+			const onEnter = () => onYazio01HoverStart();
+			const onLeave = () => onYazio01HoverEnd();
+			yazio01PanelEl.addEventListener('mouseenter', onEnter);
+			yazio01PanelEl.addEventListener('mouseleave', onLeave);
+			removeYazio01HoverListeners = () => {
+				yazio01PanelEl?.removeEventListener('mouseenter', onEnter);
+				yazio01PanelEl?.removeEventListener('mouseleave', onLeave);
+			};
+		}
+		if (yazio02PanelEl) {
+			const onEnter = () => onYazio02HoverStart();
+			const onLeave = () => onYazio02HoverEnd();
+			yazio02PanelEl.addEventListener('mouseenter', onEnter);
+			yazio02PanelEl.addEventListener('mouseleave', onLeave);
+			removeYazio02HoverListeners = () => {
+				yazio02PanelEl?.removeEventListener('mouseenter', onEnter);
+				yazio02PanelEl?.removeEventListener('mouseleave', onLeave);
+			};
+		}
 		if (kwitPanelEl) {
 			kwitObserver = new IntersectionObserver(
 				(entries) => {
@@ -383,9 +511,12 @@
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= 0.98) {
-						void playKwitAnimation();
+						if (kwitMobileInView) return;
+						kwitMobileInView = true;
+						void playKwitAnimationOnce();
 						return;
 					}
+					kwitMobileInView = false;
 					stopKwitAnimation();
 				},
 				{ threshold: [0, 0.98, 1] }
@@ -399,9 +530,12 @@
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= 0.98) {
-						void playSoberoAnimation();
+						if (soberoMobileInView) return;
+						soberoMobileInView = true;
+						void playSoberoAnimationOnce();
 						return;
 					}
+					soberoMobileInView = false;
 					stopSoberoAnimation();
 				},
 				{ threshold: [0, 0.98, 1] }
@@ -411,10 +545,14 @@
 		// Preload animated home-cover assets so first hover starts immediately.
 		void ensureKwitAnimation();
 		void ensureSoberoAnimation();
+		void ensureYazio01Animation();
+		void ensureYazio02Animation();
 
 		return () => {
 			removeSoberoHoverListeners?.();
 			removeKwitHoverListeners?.();
+			removeYazio01HoverListeners?.();
+			removeYazio02HoverListeners?.();
 			soberoObserver?.disconnect();
 			kwitObserver?.disconnect();
 			stopSoberoAnimation();
@@ -423,6 +561,12 @@
 			stopKwitAnimation();
 			kwitAnimation?.destroy();
 			kwitAnimation = null;
+			stopYazio01Animation();
+			yazio01Animation?.destroy();
+			yazio01Animation = null;
+			stopYazio02Animation();
+			yazio02Animation?.destroy();
+			yazio02Animation = null;
 			destroyHome?.();
 			destroyWork?.();
 		};
@@ -645,19 +789,29 @@
 			</div>
 		</div>
 		<div class="h-panel">
-			<div class="h-panel-bg">
+			<div class="h-panel-bg h-panel-bg--yazio01" bind:this={yazio01PanelEl}>
 				<img
 					src="/assets/yazio-cover.png"
 					alt="Yazio UX case study: microcopy optimization and Apple and Google Health onboarding variants"
 				/>
+				<div
+					class="h-panel-lottie"
+					class:is-active={yazio01AnimVisible}
+					bind:this={yazio01AnimEl}
+				></div>
 			</div>
 		</div>
 		<div class="h-panel">
-			<div class="h-panel-bg">
+			<div class="h-panel-bg h-panel-bg--yazio02" bind:this={yazio02PanelEl}>
 				<img
 					src="/assets/yazio-cover-02.png"
 					alt="Habit loop illustration with mascot: reward, investment, trigger, and routine"
 				/>
+				<div
+					class="h-panel-lottie"
+					class:is-active={yazio02AnimVisible}
+					bind:this={yazio02AnimEl}
+				></div>
 			</div>
 		</div>
 		<div class="h-panel">
@@ -1150,6 +1304,8 @@
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
 	.h-panel-bg--sobero .h-panel-lottie,
+	.h-panel-bg--yazio01 .h-panel-lottie,
+	.h-panel-bg--yazio02 .h-panel-lottie,
 	.h-panel-bg--kwit .h-panel-lottie {
 		position: absolute;
 		inset: 0;
@@ -1158,10 +1314,14 @@
 		transition: opacity 0.28s ease;
 	}
 	.h-panel-bg--sobero .h-panel-lottie.is-active,
+	.h-panel-bg--yazio01 .h-panel-lottie.is-active,
+	.h-panel-bg--yazio02 .h-panel-lottie.is-active,
 	.h-panel-bg--kwit .h-panel-lottie.is-active {
 		opacity: 1;
 	}
 	.h-panel-bg--sobero .h-panel-lottie :global(svg),
+	.h-panel-bg--yazio01 .h-panel-lottie :global(svg),
+	.h-panel-bg--yazio02 .h-panel-lottie :global(svg),
 	.h-panel-bg--kwit .h-panel-lottie :global(svg) {
 		width: 100%;
 		height: 100%;
@@ -1312,6 +1472,12 @@
 			transform: scale(1.06);
 		}
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--sobero img {
+			transform: scale(1);
+		}
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--yazio01 img {
+			transform: scale(1);
+		}
+		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--yazio02 img {
 			transform: scale(1);
 		}
 		.home-strip:not(.grabbing) .h-panel:hover .h-panel-bg--kwit img {
