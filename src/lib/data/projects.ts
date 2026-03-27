@@ -8,6 +8,7 @@ export type WorkPanel = {
 	video?: WorkPanelVideo;
 	image?: string;
 	images?: string[];
+	size?: 'double';
 };
 
 export type ProjectDef = {
@@ -56,7 +57,60 @@ export const PROJECTS: Record<string, ProjectDef> = {
 				label: 'Foundational research',
 				images: ['/assets/sobero-foundational-03.png', '/assets/sobero-foundational-02.png']
 			},
-			{ label: 'Launch' }
+			{
+				label: 'UI Design',
+				images: [
+					'/assets/sobero-icons-default.png',
+					'/assets/sobero-icons-selected.png',
+					'/assets/sobero-pictograms.png',
+					'/assets/sobero-scenes.png',
+					'/assets/sobero-illustrations.png'
+				]
+			},
+			{
+				label: 'Design System',
+				images: [
+					'/assets/sobero-ds-foundation-01.png',
+					'/assets/sobero-ds-foundation-02.png',
+					'/assets/sobero-ds-foundation-03.png'
+				]
+			},
+			{
+				label: 'Design System',
+				images: [
+					'/assets/sobero-ds-components-01.png',
+					'/assets/sobero-ds-components-02.png',
+					'/assets/sobero-ds-components-03.png'
+				]
+			},
+			{
+				label: 'User Interface - Core flows',
+				images: [
+					'/assets/sobero-mockups-01.png',
+					'/assets/sobero-mockups-02.png',
+					'/assets/sobero-mockups-03.png',
+					'/assets/sobero-mockups-04.png',
+					'/assets/sobero-mockups-05.png'
+				]
+			},
+			{
+				label: 'Sobero Site',
+				image: '/assets/sobero-site.png'
+			},
+			{
+				label: 'Apple Store Reviews',
+				images: [
+					'/assets/sobero-opinions-01.png',
+					'/assets/sobero-opinions-02.png',
+					'/assets/sobero-opinions-03.png',
+					'/assets/sobero-opinions-04.png'
+				]
+			},
+			{
+				label: 'Impact',
+				image: '/assets/sobero-impact.png',
+				size: 'double'
+			}
 		]
 	},
 	'Time-to-Value': {

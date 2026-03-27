@@ -1061,7 +1061,11 @@
 		<div class="work-strip" id="strip-work">
 			{#key currentProject}
 				{#each PROJECTS[currentProject].panels as panel, i}
-					<div class="w-panel" style={`--panel-index: ${i};`}>
+					<div
+						class="w-panel"
+						class:w-panel--double={panel.size === 'double'}
+						style={`--panel-index: ${i};`}
+					>
 						<div
 							class="w-panel-bg"
 							class:w-panel-bg--video={panel.video ||
@@ -1406,7 +1410,7 @@
 	.nav-row .nav-location-time {
 		white-space: nowrap;
 		cursor: default;
-		margin-left: 48px;
+		margin-left: 40px;
 		font-weight: normal !important;
 	}
 	.nav-say-word {
@@ -1560,6 +1564,9 @@
 		height: 100%;
 		padding-right: var(--px);
 		padding-bottom: var(--px);
+	}
+	.w-panel--double {
+		width: calc((43vw * 2) + var(--px));
 	}
 	#page-work.active .w-panel {
 		opacity: 0;
@@ -2076,6 +2083,9 @@
 		.h-panel,
 		.w-panel {
 			width: 80vw;
+		}
+		.w-panel--double {
+			width: calc((80vw * 2) + var(--px));
 		}
 		/* Case study: drop desktop left gutter (16% + px); full-width copy */
 		.work-top {
