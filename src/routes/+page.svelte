@@ -43,6 +43,7 @@
 	let welltechAnimation: import('lottie-web').AnimationItem | null = null;
 	let welltechMobileInView = false;
 	let alicaneTime = $state('--:--');
+	const preloadedCarouselSrcs = new Set<string>();
 	let sayWord = $state('Hola');
 	let sayWordTimer: number | null = null;
 	let sayWordSwapTimer: number | null = null;
@@ -363,6 +364,21 @@
 		return track.querySelectorAll('.w-panel-carousel-img').length;
 	}
 
+	function preloadProjectCarouselImages(project: string) {
+		const projectDef = PROJECTS[project];
+		if (!projectDef) return;
+		for (const panel of projectDef.panels) {
+			if (!panel.images || panel.images.length === 0) continue;
+			for (const src of panel.images) {
+				if (preloadedCarouselSrcs.has(src)) continue;
+				preloadedCarouselSrcs.add(src);
+				const img = new Image();
+				img.decoding = 'async';
+				img.src = src;
+			}
+		}
+	}
+
 	function startVideoOnDominoReveal(node: HTMLVideoElement) {
 		const panel = node.closest('.w-panel');
 		let shouldStart = false;
@@ -486,6 +502,7 @@
 		void activePage;
 		void currentProject;
 		if (activePage !== 'work') return;
+		preloadProjectCarouselImages(currentProject);
 		tick().then(() => {
 			document.querySelectorAll('.w-panel-images').forEach((node) => {
 				// Ensure each carousel starts from the first slide when opening/changing projects.
@@ -741,6 +758,7 @@
 		void ensureYazio01Animation();
 		void ensureYazio02Animation();
 		void ensureWelltechAnimation();
+		preloadProjectCarouselImages(currentProject);
 		updateAlicaneTime();
 		alicaneClockTimer = window.setInterval(updateAlicaneTime, 1000 * 30);
 
