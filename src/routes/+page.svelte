@@ -42,6 +42,11 @@
 	let welltechAnimVisible = $state(false);
 	let welltechAnimation: import('lottie-web').AnimationItem | null = null;
 	let welltechMobileInView = false;
+	let alicaneTime = $state('--:--');
+	let sayWord = $state('Hola');
+	let sayWordTimer: number | null = null;
+	let sayWordSwapTimer: number | null = null;
+	let sayWordVisible = $state(true);
 
 	function closeMob() {
 		mobileOpen = false;
@@ -71,8 +76,46 @@
 		}
 	}
 
+	function startSayWordCycle() {
+		const words = ['Hello', 'Hej', 'Ola', 'Coucou', 'Hola'];
+		let index = 0;
+		stopSayWordCycle();
+		sayWord = words[index];
+		sayWordVisible = true;
+		sayWordTimer = window.setInterval(() => {
+			sayWordVisible = false;
+			sayWordSwapTimer = window.setTimeout(() => {
+				index = (index + 1) % words.length;
+				sayWord = words[index];
+				sayWordVisible = true;
+			}, 180);
+		}, 980);
+	}
+
+	function stopSayWordCycle() {
+		if (sayWordTimer !== null) {
+			window.clearInterval(sayWordTimer);
+			sayWordTimer = null;
+		}
+		if (sayWordSwapTimer !== null) {
+			window.clearTimeout(sayWordSwapTimer);
+			sayWordSwapTimer = null;
+		}
+		sayWord = 'Hola';
+		sayWordVisible = true;
+	}
+
 	function isCoarsePointerDevice(): boolean {
 		return typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches;
+	}
+
+	function updateAlicaneTime() {
+		alicaneTime = new Intl.DateTimeFormat('en-GB', {
+			hour: '2-digit',
+			minute: '2-digit',
+			hour12: false,
+			timeZone: 'Europe/Madrid'
+		}).format(new Date());
 	}
 
 	async function ensureKwitAnimation() {
@@ -530,6 +573,7 @@
 	onMount(() => {
 		const home = document.getElementById('strip-home');
 		const work = document.getElementById('strip-work');
+		let alicaneClockTimer: number | undefined;
 		let destroyHome: (() => void) | undefined;
 		let destroyWork: (() => void) | undefined;
 		let soberoObserver: IntersectionObserver | null = null;
@@ -697,6 +741,8 @@
 		void ensureYazio01Animation();
 		void ensureYazio02Animation();
 		void ensureWelltechAnimation();
+		updateAlicaneTime();
+		alicaneClockTimer = window.setInterval(updateAlicaneTime, 1000 * 30);
 
 		return () => {
 			removeSoberoHoverListeners?.();
@@ -724,6 +770,8 @@
 			stopWelltechAnimation();
 			welltechAnimation?.destroy();
 			welltechAnimation = null;
+			stopSayWordCycle();
+			if (alicaneClockTimer) window.clearInterval(alicaneClockTimer);
 			destroyHome?.();
 			destroyWork?.();
 		};
@@ -788,10 +836,19 @@
 		</div>
 
 		<nav class="nav-right">
-				<button type="button" class:current={activePage === 'about'} onclick={openAboutRoute}>
-					About
-				</button>
-			<a class="nav-say-hola" href="mailto:lperezmolines@gmail.com">Say Hola</a>
+			<button type="button" class:current={activePage === 'about'} onclick={openAboutRoute}>
+				About
+			</button>
+			<a
+				class="nav-say-hola"
+				href="mailto:lperezmolines@gmail.com"
+				onmouseenter={startSayWordCycle}
+				onmouseleave={stopSayWordCycle}
+				onfocus={startSayWordCycle}
+				onblur={stopSayWordCycle}
+				>Say <span class="nav-say-word" class:is-hidden={!sayWordVisible}>{sayWord}</span></a
+			>
+			<span class="nav-static nav-location-time">Alicante, Spain {alicaneTime}</span>
 		</nav>
 
 		<button
@@ -871,6 +928,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
+				style="--chip-index: 0;"
 				onclick={() => openProjectRoute('UX Maturity')}
 				onkeydown={(e) => chipOpenProject(e, 'UX Maturity')}
 			>
@@ -880,6 +938,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
+				style="--chip-index: 1;"
 				onclick={() => openProjectRoute('Premium Retention')}
 				onkeydown={(e) => chipOpenProject(e, 'Premium Retention')}
 			>
@@ -890,6 +949,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
+				style="--chip-index: 2;"
 				onclick={() => openProjectRoute('0-to-1 Product')}
 				onkeydown={(e) => chipOpenProject(e, '0-to-1 Product')}
 			>
@@ -899,6 +959,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
+				style="--chip-index: 3;"
 				onclick={() => openProjectRoute('Time-to-Value')}
 				onkeydown={(e) => chipOpenProject(e, 'Time-to-Value')}
 			>
@@ -908,6 +969,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
+				style="--chip-index: 4;"
 				onclick={() => openProjectRoute('Habit Loops')}
 				onkeydown={(e) => chipOpenProject(e, 'Habit Loops')}
 			>
@@ -917,6 +979,7 @@
 				role="button"
 				tabindex="0"
 				class="chip"
+				style="--chip-index: 5;"
 				onclick={() => openProjectRoute('Growth Systems')}
 				onkeydown={(e) => chipOpenProject(e, 'Growth Systems')}
 			>
@@ -1232,7 +1295,7 @@
 	 * Only the top bar row — not buttons inside .mob-menu (also under <header>).
 	 * Limit to .nav-row so sheet buttons under <header> keep Quadrant Text Mono.
 	 */
-	.nav-row :is(button, a) {
+	.nav-row :is(button, a, .nav-static) {
 		font-family: var(--font-nav) !important;
 		font-size: 13px !important;
 		font-weight: 600 !important;
@@ -1338,6 +1401,35 @@
 		display: flex;
 		gap: 22px;
 		margin-left: auto;
+		align-items: center;
+	}
+	.nav-row .nav-location-time {
+		white-space: nowrap;
+		cursor: default;
+		margin-left: 48px;
+		font-weight: normal !important;
+	}
+	.nav-say-word {
+		display: inline-block;
+		min-width: 6.5ch;
+		margin-left: 0.18em;
+		text-align: left;
+		transition:
+			opacity 0.2s ease,
+			transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.nav-say-word.is-hidden {
+		opacity: 0;
+		transform: translateY(2px);
+	}
+	.nav-say-hola:hover,
+	.nav-say-hola:focus-visible {
+		cursor:
+			url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'%3E%3Cpath d='M6 18L18 6M10 6h8v8' fill='none' stroke='%230f0e0c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+				12 12,
+			alias;
 	}
 	.nav-index {
 		display: none;
@@ -1394,6 +1486,21 @@
 		touch-action: manipulation;
 		-webkit-tap-highlight-color: transparent;
 		transition: background 0.22s ease;
+	}
+	#page-home.active .chip {
+		animation: chip-pop-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+		animation-delay: calc(var(--chip-index, 0) * 70ms + 260ms);
+	}
+	@keyframes chip-pop-in {
+		0% {
+			transform: scale(0.9);
+		}
+		58% {
+			transform: scale(1.07);
+		}
+		100% {
+			transform: scale(1);
+		}
 	}
 	.chip__letter {
 		display: inline-block;
