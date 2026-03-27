@@ -60,55 +60,55 @@ export const PROJECTS: Record<string, ProjectDef> = {
 			{
 				label: 'UI Design',
 				images: [
-					'/assets/sobero-icons-default.png',
-					'/assets/sobero-icons-selected.png',
-					'/assets/sobero-pictograms.png',
-					'/assets/sobero-scenes.png',
-					'/assets/sobero-illustrations.png'
+					'/assets/sobero-icons-default.png?v=2',
+					'/assets/sobero-icons-selected.png?v=2',
+					'/assets/sobero-pictograms.png?v=2',
+					'/assets/sobero-scenes.png?v=2',
+					'/assets/sobero-illustrations.png?v=2'
 				]
 			},
 			{
 				label: 'Design System',
 				images: [
-					'/assets/sobero-ds-foundation-01.png',
-					'/assets/sobero-ds-foundation-02.png',
-					'/assets/sobero-ds-foundation-03.png'
+					'/assets/sobero-ds-foundation-01.png?v=2',
+					'/assets/sobero-ds-foundation-02.png?v=2',
+					'/assets/sobero-ds-foundation-03.png?v=2'
 				]
 			},
 			{
 				label: 'Design System',
 				images: [
-					'/assets/sobero-ds-components-01.png',
-					'/assets/sobero-ds-components-02b.png',
-					'/assets/sobero-ds-components-03.png'
+					'/assets/sobero-ds-components-01.png?v=2',
+					'/assets/sobero-ds-components-02b.png?v=2',
+					'/assets/sobero-ds-components-03.png?v=2'
 				]
 			},
 			{
 				label: 'User Interface - Core flows',
 				images: [
-					'/assets/sobero-mockups-01.png',
-					'/assets/sobero-mockups-02.png',
-					'/assets/sobero-mockups-03.png',
-					'/assets/sobero-mockups-04.png',
-					'/assets/sobero-mockups-05.png'
+					'/assets/sobero-mockups-01.png?v=2',
+					'/assets/sobero-mockups-02.png?v=2',
+					'/assets/sobero-mockups-03.png?v=2',
+					'/assets/sobero-mockups-04.png?v=2',
+					'/assets/sobero-mockups-05.png?v=2'
 				]
 			},
 			{
 				label: 'Sobero Site',
-				image: '/assets/sobero-site.png'
+				image: '/assets/sobero-site.png?v=2'
 			},
 			{
 				label: 'Apple Store Reviews',
 				images: [
-					'/assets/sobero-opinions-01.png',
-					'/assets/sobero-opinions-02.png',
-					'/assets/sobero-opinions-03.png',
-					'/assets/sobero-opinions-04.png'
+					'/assets/sobero-opinions-01.png?v=2',
+					'/assets/sobero-opinions-02.png?v=2',
+					'/assets/sobero-opinions-03.png?v=2',
+					'/assets/sobero-opinions-04.png?v=2'
 				]
 			},
 			{
 				label: 'Impact',
-				image: '/assets/sobero-impact.png',
+				image: '/assets/sobero-impact.png?v=2',
 				size: 'double'
 			}
 		]

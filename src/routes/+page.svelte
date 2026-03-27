@@ -1902,6 +1902,10 @@
 		left: 14px;
 		z-index: 2;
 		font-size: 14px;
+		padding: 4px 10px;
+		border-radius: 999px;
+		background: rgba(246, 246, 246, 0.4);
+		backdrop-filter: blur(1px);
 		pointer-events: none;
 	}
 	.w-panel-bg--video .w-panel-label {
