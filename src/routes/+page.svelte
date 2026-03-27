@@ -1109,7 +1109,7 @@
 												class="w-panel-carousel-img"
 												{src}
 												alt="{panel.label} {i + 1}"
-												loading={i === 0 ? 'eager' : 'lazy'}
+												loading="eager"
 												draggable="false"
 											/>
 										{/each}
@@ -1566,7 +1566,7 @@
 		padding-bottom: var(--px);
 	}
 	.w-panel--double {
-		width: calc((43vw * 2) + var(--px));
+		width: calc((43vw * 1.6) + var(--px));
 	}
 	#page-work.active .w-panel {
 		opacity: 0;
@@ -1820,7 +1820,7 @@
 			transform: scale(1.06);
 		}
 		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-carousel-img {
-			transform: scale(1.06);
+			transform: scale(1);
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {
@@ -2085,7 +2085,7 @@
 			width: 80vw;
 		}
 		.w-panel--double {
-			width: calc((80vw * 2) + var(--px));
+			width: calc((80vw * 1.6) + var(--px));
 		}
 		/* Case study: drop desktop left gutter (16% + px); full-width copy */
 		.work-top {
