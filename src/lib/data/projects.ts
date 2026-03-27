@@ -79,7 +79,7 @@ export const PROJECTS: Record<string, ProjectDef> = {
 				label: 'Design System',
 				images: [
 					'/assets/sobero-ds-components-01.png',
-					'/assets/sobero-ds-components-02.png',
+					'/assets/sobero-ds-components-02b.png',
 					'/assets/sobero-ds-components-03.png'
 				]
 			},

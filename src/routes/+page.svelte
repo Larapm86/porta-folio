@@ -1778,7 +1778,7 @@
 		width: 100%;
 		min-width: 100%;
 		height: 100%;
-		object-fit: cover;
+		object-fit: contain;
 		object-position: center;
 		scroll-snap-align: start;
 		scroll-snap-stop: always;
