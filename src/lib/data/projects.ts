@@ -8,6 +8,7 @@ export type WorkPanel = {
 	video?: WorkPanelVideo;
 	image?: string;
 	images?: string[];
+	placeholderImage?: string;
 	size?: 'double';
 };
 
@@ -23,7 +24,7 @@ export const PROJECTS: Record<string, ProjectDef> = {
 		meta: 'UX Strategy.<br>Design Systems.<br>Spain',
 		panels: [
 			{
-				label: 'Discovery',
+				label: 'Selected as Ones to watch by Apple',
 				video: { type: 'file', src: '/assets/ux-maturity-discovery.mov' }
 			},
 			{ label: 'Frameworks' },
@@ -47,7 +48,12 @@ export const PROJECTS: Record<string, ProjectDef> = {
 		panels: [
 			{
 				label: 'Progressive onboarding',
-				video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' }
+				video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' },
+				placeholderImage: '/assets/sky.svg'
+			},
+			{
+				label: 'Brand design',
+				image: '/assets/sobero-brand-design.png'
 			},
 			{
 				label: 'Modular product architecture',

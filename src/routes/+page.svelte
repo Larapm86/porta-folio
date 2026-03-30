@@ -1093,6 +1093,9 @@
 							class:w-panel-bg--placeholder={!panel.video &&
 								!panel.image &&
 								!(panel.images && panel.images.length > 0)}
+							style={panel.placeholderImage
+								? `--w-panel-placeholder-image: url('${panel.placeholderImage}')`
+								: undefined}
 						>
 							{#if panel.images && panel.images.length > 0}
 								<div class="w-panel-carousel">
@@ -1624,7 +1627,17 @@
 			transform: translateY(0);
 		}
 	}
-	.h-panel-bg,
+	.h-panel-bg {
+		width: 100%;
+		height: 100%;
+		background: var(--cream);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: relative;
+		overflow: hidden;
+		border-radius: 14px;
+	}
 	.w-panel-bg {
 		width: 100%;
 		height: 100%;
@@ -1634,6 +1647,7 @@
 		justify-content: center;
 		position: relative;
 		overflow: hidden;
+		border-radius: 14px;
 	}
 	.h-panel-bg img {
 		width: 100%;
@@ -1676,6 +1690,10 @@
 	}
 	.w-panel-bg--video {
 		background: #f6f6f6;
+		background-image: var(--w-panel-placeholder-image, none);
+		background-position: center;
+		background-size: cover;
+		background-repeat: no-repeat;
 	}
 	.w-panel-bg--video:has(> iframe.w-panel-media),
 	.w-panel-bg--video:has(> video.w-panel-media) {
@@ -1796,7 +1814,7 @@
 		width: 100%;
 		min-width: 100%;
 		height: 100%;
-		object-fit: contain;
+		object-fit: cover;
 		object-position: center;
 		scroll-snap-align: start;
 		scroll-snap-stop: always;
@@ -1865,27 +1883,31 @@
 		flex-shrink: 0;
 		display: grid;
 		grid-template-columns: 1fr auto;
-		padding: var(--top-gap) var(--px) 18px calc(16% + var(--px));
-		gap: 0 20px;
-		align-items: start;
+		padding: var(--top-gap) var(--px) 14px calc(16% + var(--px));
+		gap: 0 16px;
+		align-items: stretch;
 	}
 	.work-top-spacer {
 		display: none;
 	}
 	.work-desc {
 		grid-column: 1;
+		align-self: start;
 		font-size: 14px;
-		line-height: 29px;
+		line-height: 23px;
 		font-weight: 400;
 		max-width: 480px;
 	}
 	.work-meta {
 		grid-column: 2;
+		align-self: end;
+		font-family: var(--font-body);
 		font-size: 14px;
-		line-height: 29px;
+		line-height: 23px;
 		font-weight: 400;
 		text-align: right;
 		white-space: nowrap;
+		max-width: min(100%, 360px);
 	}
 	.work-strip-wrap {
 		flex: 1;
@@ -2112,9 +2134,9 @@
 		/* Case study: drop desktop left gutter (16% + px); full-width copy */
 		.work-top {
 			grid-template-columns: 1fr;
-			padding: 24px max(var(--px), env(safe-area-inset-right, 0px)) 18px
+			padding: 24px max(var(--px), env(safe-area-inset-right, 0px)) 14px
 				max(var(--px), env(safe-area-inset-left, 0px));
-			gap: 14px 0;
+			gap: 10px 0;
 		}
 		.work-desc,
 		.work-meta {
@@ -2126,6 +2148,7 @@
 		.work-meta {
 			text-align: left;
 			white-space: normal;
+			max-width: none;
 		}
 		.w-panel-bg--video video.w-panel-media--file {
 			border-width: 6px;
