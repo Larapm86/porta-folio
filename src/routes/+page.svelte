@@ -1082,6 +1082,7 @@
 					<div
 						class="w-panel"
 						class:w-panel--double={panel.size === 'double'}
+						class:w-panel--has-image={panel.image || (panel.images && panel.images.length > 0)}
 						style={`--panel-index: ${i};`}
 					>
 						<div
@@ -2127,6 +2128,10 @@
 		.h-panel,
 		.w-panel {
 			width: 80vw;
+		}
+		.w-panel.w-panel--has-image {
+			height: auto;
+			aspect-ratio: 4 / 3;
 		}
 		.w-panel--double {
 			width: calc((80vw * 1.6) + var(--px));
