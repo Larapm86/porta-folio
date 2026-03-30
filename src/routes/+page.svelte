@@ -2153,6 +2153,13 @@
 		.w-panel-bg--video video.w-panel-media--file {
 			border-width: 6px;
 		}
+		/* Mobile: fit images by width (keep videos unchanged) */
+		.w-panel-bg--video img.w-panel-media--image,
+		.w-panel-carousel-img {
+			object-fit: contain;
+			object-position: center;
+			background: #f6f6f6;
+		}
 		.about-body {
 			grid-template-columns: 1fr;
 		}
