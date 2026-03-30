@@ -1069,6 +1069,7 @@
 							class:w-panel-bg--video={panel.video ||
 								panel.image ||
 								(panel.images && panel.images.length > 0)}
+							class:w-panel-bg--has-placeholder={!!panel.placeholderImage}
 							class:w-panel-bg--force-dark-label={panel.label === 'Modular product architecture'}
 							class:w-panel-bg--placeholder={!panel.video &&
 								!panel.image &&
@@ -1673,7 +1674,7 @@
 		background: var(--cream);
 	}
 	.w-panel-bg--video {
-		background: #f6f6f6;
+		background-color: #f6f6f6;
 		background-image: var(--w-panel-placeholder-image, none);
 		background-position: center;
 		background-size: cover;
@@ -2134,6 +2135,9 @@
 			white-space: normal;
 			max-width: none;
 		}
+		.w-panel-label {
+			font-size: 12px;
+		}
 		.w-panel-bg--video video.w-panel-media--file {
 			border-width: 6px;
 		}
@@ -2156,5 +2160,25 @@
 		.about-body {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	/* File video + placeholder (e.g. sky): pseudo-layer behind the phone frame (all breakpoints) */
+	.w-panel-bg--has-placeholder.w-panel-bg--video:has(> video.w-panel-media--file) {
+		background-image: none;
+	}
+	.w-panel-bg--has-placeholder.w-panel-bg--video:has(> video.w-panel-media--file)::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		z-index: 0;
+		background-image: var(--w-panel-placeholder-image, none);
+		background-position: center;
+		background-size: cover;
+		background-repeat: no-repeat;
+		pointer-events: none;
+	}
+	.w-panel-bg--has-placeholder.w-panel-bg--video:has(> video.w-panel-media--file) video.w-panel-media--file {
+		position: relative;
+		z-index: 1;
 	}
 </style>

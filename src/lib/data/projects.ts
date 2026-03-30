@@ -52,16 +52,20 @@ export const PROJECTS: Record<string, ProjectDef> = {
 				placeholderImage: '/assets/sky.svg'
 			},
 			{
-				label: 'Brand design',
-				image: '/assets/sobero-brand-design.png'
-			},
-			{
 				label: 'Modular product architecture',
 				image: '/assets/sobero-modular.png'
 			},
 			{
 				label: 'Foundational research',
 				images: ['/assets/sobero-foundational-03.png', '/assets/sobero-foundational-02.png']
+			},
+			{
+				label: 'Brand design',
+				images: [
+					'/assets/sobero-brand-design-02.png',
+					'/assets/sobero-brand-design-03.png',
+					'/assets/sobero-brand-design-01.png'
+				]
 			},
 			{
 				label: 'UI Design',
