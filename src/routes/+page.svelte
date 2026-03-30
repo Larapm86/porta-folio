@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
 	import { PROJECTS, projectToSlug } from '$lib/data/projects';
 
@@ -48,6 +49,57 @@
 	let sayWordTimer: number | null = null;
 	let sayWordSwapTimer: number | null = null;
 	let sayWordVisible = $state(true);
+
+	let caseStudyFabOpen = $state(false);
+	let caseStudyAccordionIndex = $state<number | null>(null);
+
+	const caseStudyAccordion = $derived(PROJECTS[currentProject].caseStudyAccordion);
+	/** URL-based so the FAB always mounts on `/work/...` even if props ever desync. */
+	const caseStudyWidgetVisible = $derived(
+		page.url.pathname.startsWith('/work/') &&
+			!!caseStudyAccordion &&
+			caseStudyAccordion.sections.length > 0
+	);
+
+	function closeCaseStudyPanel() {
+		caseStudyFabOpen = false;
+	}
+
+	function toggleCaseStudyPanel() {
+		const nextOpen = !caseStudyFabOpen;
+		caseStudyFabOpen = nextOpen;
+		if (nextOpen) caseStudyAccordionIndex = 0;
+	}
+
+	function toggleCaseStudyAccordion(index: number) {
+		caseStudyAccordionIndex = caseStudyAccordionIndex === index ? null : index;
+	}
+
+	function caseStudyAccordionHeaderKeydown(e: KeyboardEvent, index: number, len: number) {
+		if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			const next = document.querySelector<HTMLButtonElement>(
+				`.case-study-accordion-header[data-acc-idx="${Math.min(index + 1, len - 1)}"]`
+			);
+			next?.focus();
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			const prev = document.querySelector<HTMLButtonElement>(
+				`.case-study-accordion-header[data-acc-idx="${Math.max(index - 1, 0)}"]`
+			);
+			prev?.focus();
+		}
+	}
+
+	$effect(() => {
+		void currentProject;
+		caseStudyFabOpen = false;
+		caseStudyAccordionIndex = null;
+	});
+
+	$effect(() => {
+		if (mobileOpen) caseStudyFabOpen = false;
+	});
 
 	function closeMob() {
 		mobileOpen = false;
@@ -354,9 +406,11 @@
 		stopWelltechAnimation();
 	}
 
+	/** Looping work-panel Lottie: play only while the panel intersects the viewport; pause off-screen. */
 	function workPanelLottie(node: HTMLDivElement, path: string) {
 		let anim: import('lottie-web').AnimationItem | null = null;
 		let cancelled = false;
+		let io: IntersectionObserver | null = null;
 		void import('lottie-web').then(({ default: lottie }) => {
 			if (cancelled) return;
 			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -364,17 +418,115 @@
 				container: node,
 				renderer: 'svg',
 				loop: true,
-				autoplay: !reduce,
+				autoplay: false,
 				path,
 				rendererSettings: {
 					preserveAspectRatio: 'xMidYMid slice'
 				}
 			});
-			if (reduce) anim.goToAndStop(0, true);
+			anim.addEventListener('DOMLoaded', () => {
+				if (cancelled || !anim) return;
+				if (reduce) {
+					anim.goToAndStop(0, true);
+					return;
+				}
+				anim.goToAndStop(0, true);
+				io = new IntersectionObserver(
+					(entries) => {
+						const e = entries[0];
+						if (!e || !anim || cancelled) return;
+						const inView = e.isIntersecting && e.intersectionRatio > 0;
+						if (inView) anim.play();
+						else anim.pause();
+					},
+					{ threshold: [0, 0.01, 0.1, 0.25, 0.5, 1] }
+				);
+				io.observe(node);
+			});
 		});
 		return {
 			destroy() {
 				cancelled = true;
+				io?.disconnect();
+				io = null;
+				anim?.destroy();
+				anim = null;
+			}
+		};
+	}
+
+	/** Carousel Lottie: play once when slide enters view, hold end frame; replay when it re-enters after leaving. */
+	function workPanelCarouselLottieInView(node: HTMLDivElement, path: string) {
+		let anim: import('lottie-web').AnimationItem | null = null;
+		let cancelled = false;
+		let io: IntersectionObserver | null = null;
+		let wasInView = false;
+
+		const holdEnd = () => {
+			if (!anim) return;
+			const tf = anim.totalFrames;
+			if (tf <= 0) return;
+			anim.goToAndStop(tf - 1, true);
+		};
+
+		const playFromStart = () => {
+			if (!anim || cancelled) return;
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			if (reduce) {
+				holdEnd();
+				return;
+			}
+			anim.stop();
+			anim.goToAndPlay(0, true);
+		};
+
+		void import('lottie-web').then(({ default: lottie }) => {
+			if (cancelled) return;
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			anim = lottie.loadAnimation({
+				container: node,
+				renderer: 'svg',
+				loop: false,
+				autoplay: false,
+				path,
+				rendererSettings: {
+					preserveAspectRatio: 'xMidYMid slice'
+				}
+			});
+			anim.addEventListener('complete', holdEnd);
+
+			anim.addEventListener('DOMLoaded', () => {
+				if (cancelled || !anim) return;
+				if (reduce) {
+					holdEnd();
+					return;
+				}
+				anim.goToAndStop(0, true);
+
+				// Observe against the horizontal carousel track so leaving a slide (swipe) or the strip (scroll) counts as “out of view”, and replay works when that slide is visible again.
+				const scrollRoot = node.closest('.w-panel-images');
+				io = new IntersectionObserver(
+					(entries) => {
+						const e = entries[0];
+						if (!e || !anim || cancelled) return;
+						const inView = e.isIntersecting && e.intersectionRatio > 0;
+						if (inView && !wasInView) playFromStart();
+						wasInView = inView;
+					},
+					{
+						root: scrollRoot,
+						threshold: [0, 0.01, 0.1, 0.25, 0.5, 1]
+					}
+				);
+				io.observe(node);
+			});
+		});
+
+		return {
+			destroy() {
+				cancelled = true;
+				io?.disconnect();
+				io = null;
 				anim?.destroy();
 				anim = null;
 			}
@@ -388,7 +540,7 @@
 	}
 
 	function carouselSlideCount(track: HTMLElement): number {
-		return track.querySelectorAll('.w-panel-carousel-img').length;
+		return track.children.length;
 	}
 
 	function preloadProjectCarouselImages(project: string) {
@@ -501,8 +653,9 @@
 		if (!prev || !next) return;
 		const max = Math.max(0, track.scrollWidth - track.clientWidth);
 		const sl = track.scrollLeft;
-		prev.disabled = sl <= 1;
-		next.disabled = sl >= max - 1;
+		const eps = 4;
+		prev.disabled = sl <= eps;
+		next.disabled = sl >= max - eps;
 	}
 
 	function carouselStep(e: MouseEvent, dir: -1 | 1) {
@@ -594,12 +747,81 @@
 		};
 	}
 
+	/** Mobile: inner multi-image carousels compete with horizontal strip scroll — drive track scroll manually. */
+	function installWorkStripCarouselTouchScrollFix(strip: HTMLElement): () => void {
+		let activeTrack: HTMLElement | null = null;
+		let lastX = 0;
+		let lastY = 0;
+		let startX = 0;
+		let startY = 0;
+		let locked = false;
+
+		const isMobileCarousel = () =>
+			typeof window !== 'undefined' && window.matchMedia('(max-width: 800px)').matches;
+
+		const onStart = (e: TouchEvent) => {
+			if (!isMobileCarousel() || !e.touches[0]) return;
+			const t = (e.target as HTMLElement).closest('.w-panel-images') as HTMLElement | null;
+			if (!t) {
+				activeTrack = null;
+				return;
+			}
+			activeTrack = t;
+			lastX = startX = e.touches[0].clientX;
+			lastY = startY = e.touches[0].clientY;
+			locked = false;
+		};
+
+		const onMove = (e: TouchEvent) => {
+			if (!isMobileCarousel() || !activeTrack || !e.touches[0]) return;
+			const track = activeTrack;
+			const x = e.touches[0].clientX;
+			const y = e.touches[0].clientY;
+			const dx = lastX - x;
+			lastX = x;
+			lastY = y;
+			const max = Math.max(0, track.scrollWidth - track.clientWidth);
+			if (max < 2) return;
+
+			const totalDx = Math.abs(x - startX);
+			const totalDy = Math.abs(y - startY);
+			if (!locked && totalDx < 10 && totalDy < 10) return;
+			if (!locked && totalDy > totalDx) {
+				activeTrack = null;
+				return;
+			}
+			locked = true;
+			e.preventDefault();
+			track.scrollLeft = Math.max(0, Math.min(max, track.scrollLeft + dx));
+			syncCarouselArrows(track);
+		};
+
+		const reset = () => {
+			if (activeTrack) syncCarouselArrows(activeTrack);
+			activeTrack = null;
+			locked = false;
+		};
+
+		strip.addEventListener('touchstart', onStart, { capture: true, passive: true });
+		strip.addEventListener('touchmove', onMove, { capture: true, passive: false });
+		strip.addEventListener('touchend', reset, { capture: true });
+		strip.addEventListener('touchcancel', reset, { capture: true });
+
+		return () => {
+			strip.removeEventListener('touchstart', onStart, true);
+			strip.removeEventListener('touchmove', onMove, true);
+			strip.removeEventListener('touchend', reset, true);
+			strip.removeEventListener('touchcancel', reset, true);
+		};
+	}
+
 	onMount(() => {
 		const home = document.getElementById('strip-home');
 		const work = document.getElementById('strip-work');
 		let alicaneClockTimer: number | undefined;
 		let destroyHome: (() => void) | undefined;
 		let destroyWork: (() => void) | undefined;
+		let destroyWorkCarouselTouch: (() => void) | undefined;
 		let soberoObserver: IntersectionObserver | null = null;
 		let kwitObserver: IntersectionObserver | null = null;
 		let yazio01Observer: IntersectionObserver | null = null;
@@ -611,7 +833,10 @@
 		let removeYazio02HoverListeners: (() => void) | undefined;
 		let removeWelltechHoverListeners: (() => void) | undefined;
 		if (home) destroyHome = dragScroll(home);
-		if (work) destroyWork = dragScroll(work);
+		if (work) {
+			destroyWork = dragScroll(work);
+			destroyWorkCarouselTouch = installWorkStripCarouselTouchScrollFix(work);
+		}
 		if (soberoPanelEl) {
 			const onEnter = () => onSoberoHoverStart();
 			const onLeave = () => onSoberoHoverEnd();
@@ -799,6 +1024,7 @@
 			if (alicaneClockTimer) window.clearInterval(alicaneClockTimer);
 			destroyHome?.();
 			destroyWork?.();
+			destroyWorkCarouselTouch?.();
 		};
 	});
 </script>
@@ -822,6 +1048,11 @@
 
 <svelte:window
 	onkeydown={(e) => {
+		if (e.key === 'Escape' && caseStudyFabOpen) {
+			e.preventDefault();
+			closeCaseStudyPanel();
+			return;
+		}
 		if (e.key === 'Escape' && mobileOpen) closeMob();
 	}}
 />
@@ -838,7 +1069,7 @@
 				<button type="button" onclick={openHomeRoute}>Lara Perez</button>
 		</div>
 
-		<div class="nav-work" class:sub-visible={activePage === 'work'}>
+		<div class="nav-work">
 				<button
 					type="button"
 					class="nav-work-label"
@@ -1096,14 +1327,23 @@
 							class:w-panel-bg--video={panel.video ||
 								panel.image ||
 								panel.lottie ||
+								panel.carouselLeadingLottie ||
+								panel.carouselTrailingLottie ||
+								(panel.carouselLotties && panel.carouselLotties.length > 0) ||
 								(panel.images && panel.images.length > 0)}
 							class:w-panel-bg--force-dark-label={panel.label === 'Modular product architecture'}
 							class:w-panel-bg--placeholder={!panel.video &&
 								!panel.image &&
 								!panel.lottie &&
+								!panel.carouselLeadingLottie &&
+								!panel.carouselTrailingLottie &&
+								!(panel.carouselLotties && panel.carouselLotties.length > 0) &&
 								!(panel.images && panel.images.length > 0)}
 						>
-							{#if panel.images && panel.images.length > 0}
+							{#if (panel.images && panel.images.length > 0) ||
+								panel.carouselLeadingLottie ||
+								panel.carouselTrailingLottie ||
+								(panel.carouselLotties && panel.carouselLotties.length > 0)}
 								<div class="w-panel-carousel">
 									<button
 										type="button"
@@ -1131,7 +1371,18 @@
 										title="Use the side arrows to change image"
 										onscroll={(e) => syncCarouselArrows(e.currentTarget as HTMLElement)}
 									>
-										{#each panel.images as src, i}
+										{#if panel.carouselLeadingLottie}
+											{#key `${currentProject}-${panel.label}-${panel.carouselLeadingLottie}`}
+												<div class="w-panel-carousel-slide w-panel-carousel-slide--lottie">
+													<div
+														class="w-panel-carousel-lottie-host"
+														use:workPanelCarouselLottieInView={panel.carouselLeadingLottie}
+														aria-hidden="true"
+													></div>
+												</div>
+											{/key}
+										{/if}
+										{#each panel.images ?? [] as src, i}
 											<img
 												class="w-panel-carousel-img"
 												{src}
@@ -1140,6 +1391,28 @@
 												draggable="false"
 											/>
 										{/each}
+										{#each panel.carouselLotties ?? [] as path, li}
+											{#key `${currentProject}-${panel.label}-${path}-${li}`}
+												<div class="w-panel-carousel-slide w-panel-carousel-slide--lottie">
+													<div
+														class="w-panel-carousel-lottie-host"
+														use:workPanelCarouselLottieInView={path}
+														aria-hidden="true"
+													></div>
+												</div>
+											{/key}
+										{/each}
+										{#if panel.carouselTrailingLottie}
+											{#key `${currentProject}-${panel.label}-${panel.carouselTrailingLottie}`}
+												<div class="w-panel-carousel-slide w-panel-carousel-slide--lottie">
+													<div
+														class="w-panel-carousel-lottie-host"
+														use:workPanelCarouselLottieInView={panel.carouselTrailingLottie}
+														aria-hidden="true"
+													></div>
+												</div>
+											{/key}
+										{/if}
 									</div>
 									<button
 										type="button"
@@ -1230,6 +1503,85 @@
 		</div>
 	</div>
 </div>
+
+{#if caseStudyWidgetVisible && caseStudyAccordion}
+	<button
+		type="button"
+		class="case-study-overlay"
+		class:open={caseStudyFabOpen}
+		onclick={closeCaseStudyPanel}
+		aria-label="Close case study details"
+		tabindex={caseStudyFabOpen ? 0 : -1}
+	></button>
+	<div
+		class="case-study-panel"
+		class:open={caseStudyFabOpen}
+		role="dialog"
+		aria-label="Project details"
+		aria-hidden={!caseStudyFabOpen}
+	>
+		{#each caseStudyAccordion.sections as section, i (i)}
+			<div class="case-study-acc-item" class:open={caseStudyAccordionIndex === i}>
+				<button
+					type="button"
+					class="case-study-accordion-header"
+					data-acc-idx={i}
+					aria-expanded={caseStudyAccordionIndex === i}
+					onclick={() => toggleCaseStudyAccordion(i)}
+					onkeydown={(e) =>
+						caseStudyAccordionHeaderKeydown(
+							e,
+							i,
+							caseStudyAccordion!.sections.length
+						)}
+				>
+					<span>{section.heading}</span>
+					<svg class="case-study-acc-icon" viewBox="0 0 26 26" fill="none" aria-hidden="true">
+						<circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="1.4" />
+						<line
+							x1="13"
+							y1="7.5"
+							x2="13"
+							y2="18.5"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+						/>
+						<line
+							x1="7.5"
+							y1="13"
+							x2="18.5"
+							y2="13"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+						/>
+					</svg>
+				</button>
+				<div class="case-study-acc-body">
+					<div class="case-study-acc-body-inner">
+						{#each section.body.split(/\n\n+/) as para}
+							<p>{para}</p>
+						{/each}
+					</div>
+				</div>
+			</div>
+		{/each}
+	</div>
+	<button
+		type="button"
+		class="case-study-fab"
+		class:open={caseStudyFabOpen}
+		onclick={toggleCaseStudyPanel}
+		aria-label={caseStudyFabOpen ? 'Close case study details' : 'Open case study details'}
+		aria-expanded={caseStudyFabOpen}
+	>
+		<div class="case-study-fab-icon" aria-hidden="true">
+			<span></span>
+			<span></span>
+		</div>
+	</button>
+{/if}
 
 <div id="page-about" class="page" class:active={activePage === 'about'}>
 	<div class="about-body">
@@ -1392,7 +1744,8 @@
 	}
 
 	.nav-work {
-		flex: 0 0 auto;
+		flex: 1 1 auto;
+		min-width: 0;
 		display: flex;
 		align-items: center;
 	}
@@ -1409,14 +1762,13 @@
 		transition: opacity 0.15s;
 		white-space: nowrap;
 	}
-	/* Desktop + mouse: hide case-study links until Work row hover, work page, or focus inside. */
+	/* Desktop + mouse: hide case-study links until Work row hover or focus inside (incl. when a case study is open). */
 	@media (min-width: 801px) and (hover: hover) and (pointer: fine) {
 		.nav-sub-links {
 			opacity: 0;
 			pointer-events: none;
 		}
 		.nav-work:hover .nav-sub-links,
-		.nav-work.sub-visible .nav-sub-links,
 		.nav-work:focus-within .nav-sub-links {
 			opacity: 1;
 			pointer-events: auto;
@@ -1438,14 +1790,16 @@
 	}
 	.nav-right {
 		display: flex;
-		gap: 22px;
+		gap: 18px;
+		flex: 0 0 auto;
 		margin-left: auto;
+		margin-right: 0;
 		align-items: center;
 	}
 	.nav-row .nav-location-time {
 		white-space: nowrap;
 		cursor: default;
-		margin-left: 40px;
+		margin-left: 28px;
 		font-weight: normal !important;
 	}
 	.nav-say-word {
@@ -1851,14 +2205,34 @@
 		transform: scale(1);
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
+	.w-panel-carousel-slide--lottie {
+		flex: 0 0 100%;
+		width: 100%;
+		min-width: 100%;
+		height: 100%;
+		scroll-snap-align: start;
+		scroll-snap-stop: always;
+		position: relative;
+		pointer-events: none;
+	}
+	.w-panel-carousel-lottie-host {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+	}
+	.w-panel-carousel-lottie-host :global(svg) {
+		width: 100%;
+		height: 100%;
+		display: block;
+	}
 	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label,
 	.w-panel-bg--video:has(> .w-panel-lottie) .w-panel-label,
 	.w-panel-bg--video:has(.w-panel-images) .w-panel-label {
-		color: var(--black);
+		color: #595959;
 		text-shadow: none;
 	}
 	.w-panel-bg--force-dark-label .w-panel-label {
-		color: var(--black);
+		color: #595959;
 		text-shadow: none;
 	}
 	@media (hover: hover) and (pointer: fine) {
@@ -1963,6 +2337,7 @@
 		font-feature-settings:
 			'liga' 1,
 			'kern' 1;
+		color: #595959;
 		padding: 4px 10px;
 		border-radius: 999px;
 		background: rgba(246, 246, 246, 0.4);
@@ -1970,11 +2345,11 @@
 		pointer-events: none;
 	}
 	.w-panel-bg--video .w-panel-label {
-		color: var(--black);
-		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+		color: #595959;
+		text-shadow: none;
 	}
 	.w-panel-bg .w-panel-label.w-panel-label--dark {
-		color: var(--black) !important;
+		color: #595959 !important;
 		text-shadow: none !important;
 	}
 
@@ -2168,7 +2543,7 @@
 			width: 80vw;
 		}
 		.w-panel--double {
-			width: calc((80vw * 1.6) + var(--px));
+			width: calc((80vw * 1.78) + var(--px));
 		}
 		/* Case study: drop desktop left gutter (16% + px); full-width copy */
 		.work-top {
@@ -2199,17 +2574,250 @@
 			object-position: center;
 			background: #f6f6f6;
 		}
-		/* Mobile: allow swiping through all carousel images */
+		/* Mobile: allow swiping through all carousel images (overscroll + snap avoid “stuck” slides) */
 		.w-panel-carousel {
 			pointer-events: auto;
+			touch-action: pan-x;
+			overscroll-behavior-x: contain;
 		}
 		.w-panel-images {
 			pointer-events: auto;
 			touch-action: pan-x;
+			overflow-x: scroll;
+			overscroll-behavior-x: contain;
 			-webkit-overflow-scrolling: touch;
+		}
+		.w-panel-carousel-img {
+			scroll-snap-stop: normal;
 		}
 		.about-body {
 			grid-template-columns: 1fr;
+		}
+	}
+
+	/* Case study FAB + accordion (work page) */
+	.case-study-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 6000;
+		display: none;
+		padding: 0;
+		margin: 0;
+		border: none;
+		background: rgba(15, 14, 12, 0.12);
+		cursor: default;
+		appearance: none;
+	}
+	.case-study-overlay.open {
+		display: block;
+	}
+	.case-study-panel {
+		position: fixed;
+		bottom: 92px;
+		right: 28px;
+		width: 320px;
+		max-height: min(70vh, 520px);
+		overflow-y: auto;
+		background: #fff;
+		border-radius: 16px;
+		box-shadow:
+			0 8px 40px rgba(0, 0, 0, 0.14),
+			0 2px 8px rgba(0, 0, 0, 0.08);
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 12px 10px 12px;
+		z-index: 6001;
+		font-family: var(--font-nav);
+		opacity: 0;
+		transform: scale(0.88) translateY(12px);
+		transform-origin: bottom right;
+		pointer-events: none;
+		transition:
+			opacity 0.24s cubic-bezier(0.4, 0, 0.2, 1),
+			transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+		-webkit-overflow-scrolling: touch;
+	}
+	.case-study-panel.open {
+		opacity: 1;
+		transform: scale(1) translateY(0);
+		pointer-events: auto;
+	}
+	.case-study-acc-item {
+		background: #eceae7;
+		border-radius: 10px;
+		overflow: hidden;
+		transition:
+			background 0.18s ease,
+			box-shadow 0.22s ease;
+		flex-shrink: 0;
+	}
+	.case-study-acc-item.open {
+		background: #fff;
+		box-shadow:
+			0 2px 10px rgba(0, 0, 0, 0.07),
+			0 1px 3px rgba(0, 0, 0, 0.04);
+	}
+	.case-study-acc-item:not(.open):hover {
+		background: #e2e0dd;
+	}
+	.case-study-acc-item:not(.open):active {
+		background: #dddbd8;
+	}
+	.case-study-accordion-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 15px 16px;
+		cursor: pointer;
+		user-select: none;
+		background: transparent;
+		border: none;
+		width: 100%;
+		text-align: left;
+		font-family: inherit;
+		font-size: 14px;
+		font-weight: 600;
+		color: #111;
+		letter-spacing: -0.01em;
+		outline: none;
+	}
+	.case-study-accordion-header:focus-visible {
+		outline: 2px solid #111;
+		outline-offset: -3px;
+		border-radius: 10px;
+	}
+	.case-study-acc-icon {
+		width: 22px;
+		height: 22px;
+		flex-shrink: 0;
+		color: #999;
+		transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.case-study-acc-item.open .case-study-acc-icon {
+		transform: rotate(45deg);
+		color: #333;
+	}
+	.case-study-acc-body {
+		display: grid;
+		grid-template-rows: 0fr;
+		transition: grid-template-rows 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+	.case-study-acc-item.open .case-study-acc-body {
+		grid-template-rows: 1fr;
+	}
+	.case-study-acc-body-inner {
+		overflow: hidden;
+		min-width: 0;
+	}
+	.case-study-acc-body-inner p {
+		font-family: var(--font-nav);
+		font-size: 13.5px;
+		line-height: 1.7;
+		color: #2a2a2a;
+		padding: 2px 16px 18px;
+		margin: 0;
+		opacity: 0;
+		transform: translateY(4px);
+		transition:
+			opacity 0.22s ease 0.06s,
+			transform 0.22s ease 0.06s;
+	}
+	.case-study-acc-item.open .case-study-acc-body-inner p {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.case-study-fab {
+		position: fixed;
+		bottom: 28px;
+		right: 28px;
+		width: 52px;
+		height: 52px;
+		border-radius: 50%;
+		background: #111;
+		border: none;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow:
+			0 4px 16px rgba(0, 0, 0, 0.22),
+			0 1px 4px rgba(0, 0, 0, 0.12);
+		transition:
+			background 0.18s,
+			box-shadow 0.18s,
+			transform 0.18s;
+		z-index: 6002;
+		outline: none;
+	}
+	.case-study-fab:hover {
+		background: #2a2a2a;
+		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+	}
+	.case-study-fab:active {
+		transform: scale(0.94);
+	}
+	.case-study-fab:focus-visible {
+		outline: 2px solid #111;
+		outline-offset: 3px;
+	}
+	.case-study-fab-icon {
+		position: relative;
+		width: 18px;
+		height: 18px;
+	}
+	.case-study-fab-icon span {
+		position: absolute;
+		left: 0;
+		top: 50%;
+		width: 18px;
+		height: 2px;
+		background: #fff;
+		border-radius: 2px;
+		transform-origin: center;
+		transition:
+			transform 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+			opacity 0.2s ease;
+	}
+	.case-study-fab-icon span:nth-child(1) {
+		transform: translateY(-50%) rotate(90deg);
+	}
+	.case-study-fab-icon span:nth-child(2) {
+		transform: translateY(-50%) rotate(0deg);
+	}
+	.case-study-fab.open .case-study-fab-icon span:nth-child(1) {
+		transform: translateY(-50%) rotate(45deg);
+	}
+	.case-study-fab.open .case-study-fab-icon span:nth-child(2) {
+		transform: translateY(-50%) rotate(-45deg);
+	}
+	@media (max-width: 480px) {
+		.case-study-panel {
+			right: 0;
+			left: 0;
+			bottom: 0;
+			width: 100%;
+			max-height: 85vh;
+			border-radius: 20px 20px 0 0;
+			transform-origin: bottom center;
+			transform: translateY(100%);
+			padding: 14px 12px max(32px, env(safe-area-inset-bottom, 0px));
+		}
+		.case-study-panel.open {
+			transform: translateY(0);
+		}
+		.case-study-fab {
+			bottom: max(20px, env(safe-area-inset-bottom, 0px));
+			right: 20px;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.case-study-panel,
+		.case-study-acc-body,
+		.case-study-acc-icon,
+		.case-study-acc-body-inner p,
+		.case-study-fab-icon span {
+			transition: none;
 		}
 	}
 </style>
