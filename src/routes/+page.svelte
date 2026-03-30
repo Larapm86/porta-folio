@@ -2,7 +2,29 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
-	import { PROJECTS, projectToSlug } from '$lib/data/projects';
+	import { PROJECTS, projectToSlug, type WorkPanel } from '$lib/data/projects';
+
+	function workPanelCarouselSlideCount(panel: WorkPanel): number {
+		let n = 0;
+		if (panel.carouselLeadingLottie) n += 1;
+		n += panel.images?.length ?? 0;
+		n += panel.carouselLotties?.length ?? 0;
+		if (panel.carouselTrailingLottie) n += 1;
+		return n;
+	}
+
+	function singleCarouselSlide(
+		panel: WorkPanel
+	): { type: 'lottie'; path: string } | { type: 'image'; src: string } | null {
+		if (workPanelCarouselSlideCount(panel) !== 1) return null;
+		if (panel.carouselLeadingLottie) return { type: 'lottie', path: panel.carouselLeadingLottie };
+		const imgs = panel.images;
+		if (imgs?.length === 1) return { type: 'image', src: imgs[0] };
+		const mids = panel.carouselLotties;
+		if (mids?.length === 1) return { type: 'lottie', path: mids[0] };
+		if (panel.carouselTrailingLottie) return { type: 'lottie', path: panel.carouselTrailingLottie };
+		return null;
+	}
 
 	type PageKey = 'home' | 'work' | 'about';
 	type PageProps = {
@@ -406,7 +428,32 @@
 		stopWelltechAnimation();
 	}
 
-	/** Looping work-panel Lottie: play only while the panel intersects the viewport; pause off-screen. */
+	/** Many thresholds so IO fires while scrolling (viewport root — reliable across browsers). */
+	const LOTTIE_IO_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
+
+	function lottieIntersectsViewportEnough(e: IntersectionObserverEntry): boolean {
+		return e.isIntersecting && e.intersectionRatio > 0.02;
+	}
+
+	/** One-shot carousel Lotties: need a majority of the slide visible or they finish off-screen and show the last frame. */
+	const CAROUSEL_LOTTIE_MIN_RATIO = 0.48;
+
+	function lottieCarouselSlideVisible(e: IntersectionObserverEntry): boolean {
+		return e.isIntersecting && e.intersectionRatio >= CAROUSEL_LOTTIE_MIN_RATIO;
+	}
+
+	/** Fraction of the element’s area that overlaps the viewport (for Impact fallback). */
+	function lottieHostAreaRatioInViewport(el: HTMLElement): number {
+		const r = el.getBoundingClientRect();
+		const vh = typeof window !== 'undefined' ? window.innerHeight : 0;
+		const vw = typeof window !== 'undefined' ? window.innerWidth : 0;
+		if (r.width <= 0 || r.height <= 0) return 0;
+		const iw = Math.max(0, Math.min(r.right, vw) - Math.max(r.left, 0));
+		const ih = Math.max(0, Math.min(r.bottom, vh) - Math.max(r.top, 0));
+		return (iw * ih) / (r.width * r.height);
+	}
+
+	/** Looping work-panel Lottie: play while the host is on-screen; pause otherwise. */
 	function workPanelLottie(node: HTMLDivElement, path: string) {
 		let anim: import('lottie-web').AnimationItem | null = null;
 		let cancelled = false;
@@ -435,13 +482,19 @@
 					(entries) => {
 						const e = entries[0];
 						if (!e || !anim || cancelled) return;
-						const inView = e.isIntersecting && e.intersectionRatio > 0;
-						if (inView) anim.play();
+						const on = lottieIntersectsViewportEnough(e);
+						if (on) anim.play();
 						else anim.pause();
 					},
-					{ threshold: [0, 0.01, 0.1, 0.25, 0.5, 1] }
+					{ root: null, threshold: LOTTIE_IO_THRESHOLDS }
 				);
 				io.observe(node);
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						if (cancelled || !anim) return;
+						if (lottieHostAreaRatioInViewport(node) >= 0.12) anim.play();
+					});
+				});
 			});
 		});
 		return {
@@ -455,7 +508,7 @@
 		};
 	}
 
-	/** Carousel Lottie: play once when slide enters view, hold end frame; replay when it re-enters after leaving. */
+	/** Carousel Lottie: play once a slide is mostly in view; hold last frame; replay after leaving and returning. */
 	function workPanelCarouselLottieInView(node: HTMLDivElement, path: string) {
 		let anim: import('lottie-web').AnimationItem | null = null;
 		let cancelled = false;
@@ -503,20 +556,28 @@
 				}
 				anim.goToAndStop(0, true);
 
-				// Observe against the horizontal carousel track so leaving a slide (swipe) or the strip (scroll) counts as “out of view”, and replay works when that slide is visible again.
-				const scrollRoot = node.closest('.w-panel-images');
+				const syncFromIo = (e: IntersectionObserverEntry) => {
+					if (!anim || cancelled) return;
+					const on = lottieCarouselSlideVisible(e);
+					if (!on) {
+						if (wasInView) {
+							anim.pause();
+							anim.goToAndStop(0, true);
+						}
+						wasInView = false;
+						return;
+					}
+					if (!wasInView) playFromStart();
+					wasInView = true;
+				};
+
 				io = new IntersectionObserver(
 					(entries) => {
 						const e = entries[0];
 						if (!e || !anim || cancelled) return;
-						const inView = e.isIntersecting && e.intersectionRatio > 0;
-						if (inView && !wasInView) playFromStart();
-						wasInView = inView;
+						syncFromIo(e);
 					},
-					{
-						root: scrollRoot,
-						threshold: [0, 0.01, 0.1, 0.25, 0.5, 1]
-					}
+					{ root: null, threshold: LOTTIE_IO_THRESHOLDS }
 				);
 				io.observe(node);
 			});
@@ -1340,10 +1401,7 @@
 								!(panel.carouselLotties && panel.carouselLotties.length > 0) &&
 								!(panel.images && panel.images.length > 0)}
 						>
-							{#if (panel.images && panel.images.length > 0) ||
-								panel.carouselLeadingLottie ||
-								panel.carouselTrailingLottie ||
-								(panel.carouselLotties && panel.carouselLotties.length > 0)}
+							{#if workPanelCarouselSlideCount(panel) > 1}
 								<div class="w-panel-carousel">
 									<button
 										type="button"
@@ -1433,6 +1491,27 @@
 										</svg>
 									</button>
 								</div>
+							{:else if workPanelCarouselSlideCount(panel) === 1}
+								{@const single = singleCarouselSlide(panel)}
+								{#if single?.type === 'lottie'}
+									{#key `${currentProject}-${panel.label}-${single.path}`}
+										<div class="w-panel-single-lottie">
+											<div
+												class="w-panel-carousel-lottie-host"
+												use:workPanelCarouselLottieInView={single.path}
+												aria-hidden="true"
+											></div>
+										</div>
+									{/key}
+								{:else if single?.type === 'image'}
+									<img
+										class="w-panel-media w-panel-media--image"
+										src={single.src}
+										alt={panel.label}
+										loading="eager"
+										draggable="false"
+									/>
+								{/if}
 							{:else if panel.lottie}
 								{#key `${currentProject}-${panel.label}-${panel.lottie}`}
 									<div
@@ -2225,9 +2304,16 @@
 		height: 100%;
 		display: block;
 	}
+	.w-panel-single-lottie {
+		position: absolute;
+		inset: 0;
+		overflow: hidden;
+		pointer-events: none;
+	}
 	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label,
 	.w-panel-bg--video:has(> .w-panel-lottie) .w-panel-label,
-	.w-panel-bg--video:has(.w-panel-images) .w-panel-label {
+	.w-panel-bg--video:has(.w-panel-images) .w-panel-label,
+	.w-panel-bg--video:has(.w-panel-single-lottie) .w-panel-label {
 		color: #595959;
 		text-shadow: none;
 	}
@@ -2801,14 +2887,16 @@
 			border-radius: 20px 20px 0 0;
 			transform-origin: bottom center;
 			transform: translateY(100%);
-			padding: 14px 12px max(32px, env(safe-area-inset-bottom, 0px));
+			/* Clear home indicator + floating button so last accordion text stays readable */
+			padding: 14px max(12px, env(safe-area-inset-right, 0px)) max(24px, calc(88px + env(safe-area-inset-bottom, 0px)))
+				max(12px, env(safe-area-inset-left, 0px));
 		}
 		.case-study-panel.open {
 			transform: translateY(0);
 		}
 		.case-study-fab {
-			bottom: max(20px, env(safe-area-inset-bottom, 0px));
-			right: 20px;
+			bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+			right: max(20px, env(safe-area-inset-right, 0px));
 		}
 	}
 	@media (prefers-reduced-motion: reduce) {

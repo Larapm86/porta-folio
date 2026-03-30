@@ -152,9 +152,9 @@ export const PROJECTS: Record<string, ProjectDef> = {
 					'/assets/sobero-icons-default.png',
 					'/assets/sobero-icons-selected.png',
 					'/assets/sobero-pictograms.png',
-					'/assets/sobero-scenes.png',
-					'/assets/sobero-illustrations.png'
-				]
+					'/assets/sobero-scenes.png'
+				],
+				carouselTrailingLottie: '/assets/sobero-illustrations.json'
 			},
 			{
 				label: 'Design System - Foundations',
@@ -184,15 +184,15 @@ export const PROJECTS: Record<string, ProjectDef> = {
 			},
 			{
 				label: 'Sobero Site',
-				image: '/assets/sobero-site.png'
+				lottie: '/assets/sobero-web.json'
 			},
 			{
 				label: 'Apple Store Reviews',
-				images: [
-					'/assets/sobero-opinions-01.png',
-					'/assets/sobero-opinions-02.png',
-					'/assets/sobero-opinions-03.png',
-					'/assets/sobero-opinions-04.png'
+				carouselLotties: [
+					'/assets/sobero-opinions01.json',
+					'/assets/sobero-opinions02.json',
+					'/assets/sobero-opinions03.json',
+					'/assets/sobero-opinions04.json'
 				]
 			}
 		]
