@@ -184,6 +184,14 @@
 		return typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches;
 	}
 
+	/** Home strip cover Lotties: many phones report (pointer: fine); still treat narrow viewports as touch. */
+	function useHomeStripCoverLottieIo(): boolean {
+		if (typeof window === 'undefined') return false;
+		return (
+			window.matchMedia('(max-width: 800px)').matches || isCoarsePointerDevice()
+		);
+	}
+
 	/** Desktop: fill panel (slice). Mobile (≤800px): fit width, no side crop (meet). */
 	function lottiePanelPreserveAspectRatio(): string {
 		if (typeof window === 'undefined') return 'xMidYMid slice';
@@ -437,12 +445,19 @@
 	/** Many thresholds so IO fires while scrolling (viewport root — reliable across browsers). */
 	const LOTTIE_IO_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
 
-	/** Home cover cards use ~80vw; 0.98 visible area is rare on phones — Lotties never played. */
-	const MOBILE_HOME_COVER_IO_RATIO = 0.68;
-	const MOBILE_HOME_COVER_IO_THRESHOLDS = [0, 0.4, MOBILE_HOME_COVER_IO_RATIO, 1];
+	/** Home cover cards use ~80vw; keep threshold forgiving for safe areas + dynamic browser chrome. */
+	const MOBILE_HOME_COVER_IO_RATIO = 0.52;
+	const MOBILE_HOME_COVER_IO_THRESHOLDS = [0, 0.28, MOBILE_HOME_COVER_IO_RATIO, 0.85, 1];
+
+	/** Expand viewport intersection on small screens (iOS toolbars, IO quirks). */
+	const LOTTIE_VIEWPORT_IO_ROOT_MARGIN = '64px 0px 22% 0px';
 
 	function lottieIntersectsViewportEnough(e: IntersectionObserverEntry): boolean {
-		return e.isIntersecting && e.intersectionRatio > 0.02;
+		if (!e.isIntersecting) return false;
+		if (e.intersectionRatio > 0.02) return true;
+		// iOS sometimes reports ~0 ratio while the element is visibly on screen.
+		const ir = e.intersectionRect;
+		return ir.width > 2 && ir.height > 2;
 	}
 
 	/** One-shot carousel Lotties: need a majority of the slide visible in the carousel scrollport (or viewport for single-slide). */
@@ -499,13 +514,13 @@
 						if (on) anim.play();
 						else anim.pause();
 					},
-					{ root: null, threshold: LOTTIE_IO_THRESHOLDS }
+					{ root: null, rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN, threshold: LOTTIE_IO_THRESHOLDS }
 				);
 				io.observe(node);
 				requestAnimationFrame(() => {
 					requestAnimationFrame(() => {
 						if (cancelled || !anim) return;
-						if (lottieHostAreaRatioInViewport(node) >= 0.12) anim.play();
+						if (lottieHostAreaRatioInViewport(node) >= 0.06) anim.play();
 					});
 				});
 			});
@@ -627,7 +642,11 @@
 							if (!wasVisible) lastCarouselIdx = -999;
 							syncScrollReplay();
 						},
-						{ root: null, threshold: LOTTIE_IO_THRESHOLDS }
+						{
+							root: null,
+							rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN,
+							threshold: LOTTIE_IO_THRESHOLDS
+						}
 					);
 					io.observe(observeViewportEl);
 
@@ -992,7 +1011,7 @@
 		if (kwitPanelEl) {
 			kwitObserver = new IntersectionObserver(
 				(entries) => {
-					if (!isCoarsePointerDevice()) return;
+					if (!useHomeStripCoverLottieIo()) return;
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
@@ -1004,14 +1023,14 @@
 					kwitMobileInView = false;
 					stopKwitAnimation();
 				},
-				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
+				{ root: null, rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN, threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			kwitObserver.observe(kwitPanelEl);
 		}
 		if (soberoPanelEl) {
 			soberoObserver = new IntersectionObserver(
 				(entries) => {
-					if (!isCoarsePointerDevice()) return;
+					if (!useHomeStripCoverLottieIo()) return;
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
@@ -1023,14 +1042,14 @@
 					soberoMobileInView = false;
 					stopSoberoAnimation();
 				},
-				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
+				{ root: null, rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN, threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			soberoObserver.observe(soberoPanelEl);
 		}
 		if (yazio01PanelEl) {
 			yazio01Observer = new IntersectionObserver(
 				(entries) => {
-					if (!isCoarsePointerDevice()) return;
+					if (!useHomeStripCoverLottieIo()) return;
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
@@ -1042,14 +1061,14 @@
 					yazio01MobileInView = false;
 					stopYazio01Animation();
 				},
-				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
+				{ root: null, rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN, threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			yazio01Observer.observe(yazio01PanelEl);
 		}
 		if (yazio02PanelEl) {
 			yazio02Observer = new IntersectionObserver(
 				(entries) => {
-					if (!isCoarsePointerDevice()) return;
+					if (!useHomeStripCoverLottieIo()) return;
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
@@ -1061,14 +1080,14 @@
 					yazio02MobileInView = false;
 					stopYazio02Animation();
 				},
-				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
+				{ root: null, rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN, threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			yazio02Observer.observe(yazio02PanelEl);
 		}
 		if (welltechPanelEl) {
 			welltechObserver = new IntersectionObserver(
 				(entries) => {
-					if (!isCoarsePointerDevice()) return;
+					if (!useHomeStripCoverLottieIo()) return;
 					const entry = entries[0];
 					if (!entry) return;
 					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
@@ -1080,7 +1099,7 @@
 					welltechMobileInView = false;
 					stopWelltechAnimation();
 				},
-				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
+				{ root: null, rootMargin: LOTTIE_VIEWPORT_IO_ROOT_MARGIN, threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			welltechObserver.observe(welltechPanelEl);
 		}
@@ -2121,6 +2140,14 @@
 			transform: translateY(0);
 		}
 	}
+	@media (prefers-reduced-motion: reduce) {
+		#page-home.active .h-panel,
+		#page-work.active .w-panel {
+			animation: none;
+			opacity: 1;
+			transform: none;
+		}
+	}
 	.h-panel-bg {
 		width: 100%;
 		height: 100%;
@@ -2721,18 +2748,25 @@
 			max-width: 100%;
 			display: block;
 		}
-		/* Mobile: allow swiping through all carousel images (overscroll + snap avoid “stuck” slides) */
+		/*
+		 * Mobile: no horizontal swipe on the in-panel carousel — it fights the work-strip scroll.
+		 * Use prev/next only; track still scrolls programmatically (scrollTo / scrollLeft).
+		 */
 		.w-panel-carousel {
+			pointer-events: none;
+			touch-action: pan-y;
+			overscroll-behavior-x: auto;
+		}
+		.w-panel-carousel-btn {
 			pointer-events: auto;
-			touch-action: pan-x;
-			overscroll-behavior-x: contain;
+			touch-action: manipulation;
 		}
 		.w-panel-images {
-			pointer-events: auto;
-			touch-action: pan-x;
-			overflow-x: scroll;
-			overscroll-behavior-x: contain;
-			-webkit-overflow-scrolling: touch;
+			pointer-events: none;
+			touch-action: pan-y;
+			overflow-x: hidden;
+			overscroll-behavior-x: auto;
+			-webkit-overflow-scrolling: auto;
 		}
 		.w-panel-carousel-img {
 			scroll-snap-stop: normal;
