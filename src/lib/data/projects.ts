@@ -166,11 +166,8 @@ export const PROJECTS: Record<string, ProjectDef> = {
 			},
 			{
 				label: 'Design System - Components',
-				images: [
-					'/assets/sobero-ds-components-01.png',
-					'/assets/sobero-ds-components-02b.png',
-					'/assets/sobero-ds-components-03.png'
-				]
+				carouselLeadingLottie: '/assets/sobero-ds-components01.json',
+				images: ['/assets/sobero-ds-components-02b.png', '/assets/sobero-ds-components-03.png']
 			},
 			{
 				label: 'User Interface - Core flows',

@@ -448,6 +448,9 @@
 	/** One-shot carousel Lotties: need a majority of the slide visible in the carousel scrollport (or viewport for single-slide). */
 	const CAROUSEL_LOTTIE_MIN_RATIO = 0.48;
 
+	/** These replay from frame 0 every time their carousel slide becomes active (scroll), not only on first IO. */
+	const CAROUSEL_LOTTIE_SCROLL_REPLAY_PATHS = new Set(['/assets/sobero-ds-components01.json']);
+
 	function lottieCarouselSlideVisible(e: IntersectionObserverEntry): boolean {
 		return e.isIntersecting && e.intersectionRatio >= CAROUSEL_LOTTIE_MIN_RATIO;
 	}
@@ -524,6 +527,7 @@
 		let cancelled = false;
 		let io: IntersectionObserver | null = null;
 		let wasInView = false;
+		let detachCarouselScroll: (() => void) | undefined;
 
 		const holdEnd = () => {
 			if (!anim) return;
@@ -566,37 +570,107 @@
 				}
 				anim.goToAndStop(0, true);
 
-				const syncFromIo = (e: IntersectionObserverEntry) => {
-					if (!anim || cancelled) return;
-					const on = lottieCarouselSlideVisible(e);
-					if (!on) {
-						if (wasInView) {
-							anim.pause();
-							anim.goToAndStop(0, true);
-						}
-						wasInView = false;
+				const track = node.closest('.w-panel-images') as HTMLElement | null;
+				const slideEl =
+					(node.closest('.w-panel-carousel-slide--lottie') as HTMLElement | null) ??
+					(node.parentElement as HTMLElement | null);
+				const slideIndex =
+					track && slideEl ? (Array.prototype.indexOf.call(track.children, slideEl) as number) : -1;
+				const useScrollReplay =
+					CAROUSEL_LOTTIE_SCROLL_REPLAY_PATHS.has(path) && track !== null && slideIndex >= 0;
+
+				let lastCarouselIdx = -999;
+				let carouselViewportVisible = false;
+
+				const syncScrollReplay = () => {
+					if (!anim || cancelled || !track || slideIndex < 0) return;
+					const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+					const cur = carouselSlideIndex(track);
+					if (reduce) {
+						lastCarouselIdx = cur;
 						return;
 					}
-					if (!wasInView) playFromStart();
-					wasInView = true;
+					if (!carouselViewportVisible) {
+						anim.pause();
+						anim.goToAndStop(0, true);
+						return;
+					}
+					if (cur === slideIndex) {
+						if (lastCarouselIdx !== slideIndex) playFromStart();
+					} else {
+						anim.pause();
+						anim.goToAndStop(0, true);
+					}
+					lastCarouselIdx = cur;
 				};
 
-				const track = node.closest('.w-panel-images');
-				io = new IntersectionObserver(
-					(entries) => {
-						const e = entries[0];
-						if (!e || !anim || cancelled) return;
-						syncFromIo(e);
-					},
-					{ root: track, threshold: LOTTIE_IO_THRESHOLDS }
-				);
-				io.observe(node);
+				if (useScrollReplay) {
+					const panelEl = node.closest('.w-panel') as HTMLElement | null;
+					const observeViewportEl = panelEl ?? (node.closest('.w-panel-carousel') as HTMLElement | null) ?? track;
+
+					io = new IntersectionObserver(
+						(entries) => {
+							const e = entries[0];
+							if (!e || cancelled) return;
+							const on = lottieIntersectsViewportEnough(e);
+							if (!on) {
+								if (carouselViewportVisible) {
+									carouselViewportVisible = false;
+									lastCarouselIdx = -999;
+									anim?.pause();
+									anim?.goToAndStop(0, true);
+								}
+								return;
+							}
+							const wasVisible = carouselViewportVisible;
+							carouselViewportVisible = true;
+							if (!wasVisible) lastCarouselIdx = -999;
+							syncScrollReplay();
+						},
+						{ root: null, threshold: LOTTIE_IO_THRESHOLDS }
+					);
+					io.observe(observeViewportEl);
+
+					track.addEventListener('scroll', syncScrollReplay, { passive: true });
+					track.addEventListener('scrollend', syncScrollReplay as EventListener);
+					detachCarouselScroll = () => {
+						track.removeEventListener('scroll', syncScrollReplay);
+						track.removeEventListener('scrollend', syncScrollReplay as EventListener);
+					};
+				} else {
+					const syncFromIo = (e: IntersectionObserverEntry) => {
+						if (!anim || cancelled) return;
+						const on = lottieCarouselSlideVisible(e);
+						if (!on) {
+							if (wasInView) {
+								anim.pause();
+								anim.goToAndStop(0, true);
+							}
+							wasInView = false;
+							return;
+						}
+						if (!wasInView) playFromStart();
+						wasInView = true;
+					};
+
+					io = new IntersectionObserver(
+						(entries) => {
+							const e = entries[0];
+							if (!e || !anim || cancelled) return;
+							syncFromIo(e);
+						},
+						{ root: track, threshold: LOTTIE_IO_THRESHOLDS }
+					);
+					io.observe(node);
+				}
 			});
 		});
 
 		return {
 			destroy() {
 				cancelled = true;
+				detachCarouselScroll?.();
+				detachCarouselScroll = undefined;
 				io?.disconnect();
 				io = null;
 				anim?.destroy();
@@ -613,6 +687,30 @@
 
 	function carouselSlideCount(track: HTMLElement): number {
 		return track.children.length;
+	}
+
+	/**
+	 * Active carousel slide by which child is closest to the track’s horizontal center.
+	 * `floor(scrollLeft / clientWidth)` mis-detects after snap / subpixel scroll and breaks replay + arrows.
+	 */
+	function carouselSlideIndex(track: HTMLElement): number {
+		const n = track.children.length;
+		if (n <= 0) return 0;
+		const tr = track.getBoundingClientRect();
+		if (tr.width <= 0) return 0;
+		const midX = tr.left + tr.width * 0.5;
+		let best = 0;
+		let bestDist = Infinity;
+		for (let i = 0; i < n; i++) {
+			const cr = (track.children[i] as HTMLElement).getBoundingClientRect();
+			const cx = (cr.left + cr.right) * 0.5;
+			const d = Math.abs(cx - midX);
+			if (d < bestDist) {
+				bestDist = d;
+				best = i;
+			}
+		}
+		return best;
 	}
 
 	function preloadProjectCarouselImages(project: string) {
@@ -723,11 +821,10 @@
 		const prev = wrap.querySelector('.w-panel-carousel-btn--prev') as HTMLButtonElement | null;
 		const next = wrap.querySelector('.w-panel-carousel-btn--next') as HTMLButtonElement | null;
 		if (!prev || !next) return;
-		const max = Math.max(0, track.scrollWidth - track.clientWidth);
-		const sl = track.scrollLeft;
-		const eps = 4;
-		prev.disabled = sl <= eps;
-		next.disabled = sl >= max - eps;
+		const n = carouselSlideCount(track);
+		const i = carouselSlideIndex(track);
+		prev.disabled = i <= 0;
+		next.disabled = i >= n - 1;
 	}
 
 	function carouselStep(e: MouseEvent, dir: -1 | 1) {
@@ -740,10 +837,15 @@
 		const smooth =
 			typeof window !== 'undefined' &&
 			!window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-		const step = carouselStepPx(track);
+		const w = carouselStepPx(track);
 		const count = carouselSlideCount(track);
-		if (step <= 0 || count <= 0) return;
-		track.scrollBy({ left: dir * step, behavior: smooth ? 'smooth' : 'auto' });
+		if (w <= 0 || count <= 0) return;
+		const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+		const i = carouselSlideIndex(track);
+		const nextI = Math.min(count - 1, Math.max(0, i + dir));
+		const targetLeft =
+			nextI >= count - 1 ? maxScroll : Math.min(maxScroll, Math.max(0, nextI * w));
+		track.scrollTo({ left: targetLeft, behavior: smooth ? 'smooth' : 'auto' });
 		const sync = () => syncCarouselArrows(track);
 		sync();
 		track.addEventListener('scrollend', sync, { once: true });
@@ -1383,6 +1485,10 @@
 												alt="{panel.label} {i + 1}"
 												loading="eager"
 												draggable="false"
+												onload={(e) => {
+													const t = (e.currentTarget as HTMLElement).closest('.w-panel-images');
+													if (t) syncCarouselArrows(t as HTMLElement);
+												}}
 											/>
 										{/each}
 										{#each panel.carouselLotties ?? [] as path, li}
@@ -1956,6 +2062,7 @@
 		overflow-y: hidden;
 		scrollbar-width: none;
 		padding-left: var(--px);
+		padding-right: var(--px);
 		padding-bottom: var(--px);
 		cursor: grab;
 		-webkit-overflow-scrolling: touch;
