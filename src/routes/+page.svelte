@@ -184,6 +184,12 @@
 		return typeof window !== 'undefined' && window.matchMedia('(hover: none), (pointer: coarse)').matches;
 	}
 
+	/** Desktop: fill panel (slice). Mobile (≤800px): fit width, no side crop (meet). */
+	function lottiePanelPreserveAspectRatio(): string {
+		if (typeof window === 'undefined') return 'xMidYMid slice';
+		return window.matchMedia('(max-width: 800px)').matches ? 'xMidYMid meet' : 'xMidYMid slice';
+	}
+
 	function updateAlicaneTime() {
 		alicaneTime = new Intl.DateTimeFormat('en-GB', {
 			hour: '2-digit',
@@ -204,7 +210,7 @@
 			autoplay: false,
 			path: '/assets/kwit-cover-hover.json',
 			rendererSettings: {
-				preserveAspectRatio: 'xMidYMid slice'
+				preserveAspectRatio: lottiePanelPreserveAspectRatio()
 			}
 		});
 		kwitAnimation.goToAndStop(0, true);
@@ -251,7 +257,7 @@
 			autoplay: false,
 			path: '/assets/sobero-cover-hover.json',
 			rendererSettings: {
-				preserveAspectRatio: 'xMidYMid slice'
+				preserveAspectRatio: lottiePanelPreserveAspectRatio()
 			}
 		});
 		soberoAnimation.goToAndStop(0, true);
@@ -298,7 +304,7 @@
 			autoplay: false,
 			path: '/assets/yazio-cover-01-hover.json',
 			rendererSettings: {
-				preserveAspectRatio: 'xMidYMid slice'
+				preserveAspectRatio: lottiePanelPreserveAspectRatio()
 			}
 		});
 		yazio01Animation.goToAndStop(0, true);
@@ -345,7 +351,7 @@
 			autoplay: false,
 			path: '/assets/yazio-cover-02-hover.json',
 			rendererSettings: {
-				preserveAspectRatio: 'xMidYMid slice'
+				preserveAspectRatio: lottiePanelPreserveAspectRatio()
 			}
 		});
 		yazio02Animation.goToAndStop(0, true);
@@ -392,7 +398,7 @@
 			autoplay: false,
 			path: '/assets/welltech-cover-hover.json',
 			rendererSettings: {
-				preserveAspectRatio: 'xMidYMid slice'
+				preserveAspectRatio: lottiePanelPreserveAspectRatio()
 			}
 		});
 		welltechAnimation.goToAndStop(0, true);
@@ -472,7 +478,7 @@
 				autoplay: false,
 				path,
 				rendererSettings: {
-					preserveAspectRatio: 'xMidYMid slice'
+					preserveAspectRatio: lottiePanelPreserveAspectRatio()
 				}
 			});
 			anim.addEventListener('DOMLoaded', () => {
@@ -547,7 +553,7 @@
 				autoplay: false,
 				path,
 				rendererSettings: {
-					preserveAspectRatio: 'xMidYMid slice'
+					preserveAspectRatio: lottiePanelPreserveAspectRatio()
 				}
 			});
 			anim.addEventListener('complete', holdEnd);
@@ -2554,6 +2560,12 @@
 			max-width: none;
 			width: 100%;
 		}
+		.h-panel-bg img {
+			object-fit: contain;
+			object-position: center;
+			max-width: 100%;
+			box-sizing: border-box;
+		}
 		.h-panel,
 		.w-panel {
 			width: 80vw;
@@ -2583,12 +2595,24 @@
 		.w-panel-bg--video video.w-panel-media--file {
 			border-width: 6px;
 		}
-		/* Mobile: fit images by width (keep videos unchanged) */
+		/* Mobile: fit full panel width — no horizontal crop (videos / iframes unchanged) */
 		.w-panel-bg--video img.w-panel-media--image,
 		.w-panel-carousel-img {
+			width: 100%;
+			max-width: 100%;
+			height: 100%;
 			object-fit: contain;
 			object-position: center;
 			background: #f6f6f6;
+			box-sizing: border-box;
+		}
+		.w-panel-carousel-lottie-host :global(svg),
+		.w-panel-single-lottie :global(svg),
+		.w-panel-bg--video .w-panel-lottie :global(svg) {
+			width: 100%;
+			height: 100%;
+			max-width: 100%;
+			display: block;
 		}
 		/* Mobile: allow swiping through all carousel images (overscroll + snap avoid “stuck” slides) */
 		.w-panel-carousel {
