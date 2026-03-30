@@ -2130,8 +2130,10 @@
 			width: 80vw;
 		}
 		.w-panel.w-panel--has-image {
-			height: auto;
-			aspect-ratio: 4 / 3;
+			align-self: flex-start;
+			height: 62vw;
+			min-height: 260px;
+			max-height: 420px;
 		}
 		.w-panel--double {
 			width: calc((80vw * 1.6) + var(--px));
@@ -2164,6 +2166,15 @@
 			object-fit: contain;
 			object-position: center;
 			background: #f6f6f6;
+		}
+		/* Mobile: allow swiping through all carousel images */
+		.w-panel-carousel {
+			pointer-events: auto;
+		}
+		.w-panel-images {
+			pointer-events: auto;
+			touch-action: pan-x;
+			-webkit-overflow-scrolling: touch;
 		}
 		.about-body {
 			grid-template-columns: 1fr;
