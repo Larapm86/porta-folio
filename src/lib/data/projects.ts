@@ -8,7 +8,8 @@ export type WorkPanel = {
 	video?: WorkPanelVideo;
 	image?: string;
 	images?: string[];
-	placeholderImage?: string;
+	/** Lottie JSON under `/static` (e.g. `/assets/foo.json`) */
+	lottie?: string;
 	size?: 'double';
 };
 
@@ -48,8 +49,12 @@ export const PROJECTS: Record<string, ProjectDef> = {
 		panels: [
 			{
 				label: 'Progressive onboarding',
-				video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' },
-				placeholderImage: '/assets/sky.svg'
+				video: { type: 'file', src: '/assets/0-to-1-research-sobero.mov' }
+			},
+			{
+				label: 'Impact',
+				lottie: '/assets/sobero-hero.json',
+				size: 'double'
 			},
 			{
 				label: 'Modular product architecture',
@@ -78,7 +83,7 @@ export const PROJECTS: Record<string, ProjectDef> = {
 				]
 			},
 			{
-				label: 'Design System',
+				label: 'Design System - Foundations',
 				images: [
 					'/assets/sobero-ds-foundation-01.png',
 					'/assets/sobero-ds-foundation-02.png',
@@ -86,7 +91,7 @@ export const PROJECTS: Record<string, ProjectDef> = {
 				]
 			},
 			{
-				label: 'Design System',
+				label: 'Design System - Components',
 				images: [
 					'/assets/sobero-ds-components-01.png',
 					'/assets/sobero-ds-components-02b.png',
@@ -115,11 +120,6 @@ export const PROJECTS: Record<string, ProjectDef> = {
 					'/assets/sobero-opinions-03.png',
 					'/assets/sobero-opinions-04.png'
 				]
-			},
-			{
-				label: 'Impact',
-				image: '/assets/sobero-impact.png',
-				size: 'double'
 			}
 		]
 	},

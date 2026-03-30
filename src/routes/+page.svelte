@@ -354,6 +354,33 @@
 		stopWelltechAnimation();
 	}
 
+	function workPanelLottie(node: HTMLDivElement, path: string) {
+		let anim: import('lottie-web').AnimationItem | null = null;
+		let cancelled = false;
+		void import('lottie-web').then(({ default: lottie }) => {
+			if (cancelled) return;
+			const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+			anim = lottie.loadAnimation({
+				container: node,
+				renderer: 'svg',
+				loop: true,
+				autoplay: !reduce,
+				path,
+				rendererSettings: {
+					preserveAspectRatio: 'xMidYMid slice'
+				}
+			});
+			if (reduce) anim.goToAndStop(0, true);
+		});
+		return {
+			destroy() {
+				cancelled = true;
+				anim?.destroy();
+				anim = null;
+			}
+		};
+	}
+
 	function carouselStepPx(track: HTMLElement): number {
 		// Slides are full-width (`flex: 0 0 100%` / `width: 100%`), so using the track width
 		// avoids off-by-a-few-pixels rounding that can cause the snap to pick the same slide.
@@ -781,7 +808,7 @@
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
 	<link
-		href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600&display=swap"
+		href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
 		rel="stylesheet"
 	/>
 	<link
@@ -1068,15 +1095,13 @@
 							class="w-panel-bg"
 							class:w-panel-bg--video={panel.video ||
 								panel.image ||
+								panel.lottie ||
 								(panel.images && panel.images.length > 0)}
-							class:w-panel-bg--has-placeholder={!!panel.placeholderImage}
 							class:w-panel-bg--force-dark-label={panel.label === 'Modular product architecture'}
 							class:w-panel-bg--placeholder={!panel.video &&
 								!panel.image &&
+								!panel.lottie &&
 								!(panel.images && panel.images.length > 0)}
-							style={panel.placeholderImage
-								? `--w-panel-placeholder-image: url('${panel.placeholderImage}')`
-								: undefined}
 						>
 							{#if panel.images && panel.images.length > 0}
 								<div class="w-panel-carousel">
@@ -1135,6 +1160,14 @@
 										</svg>
 									</button>
 								</div>
+							{:else if panel.lottie}
+								{#key `${currentProject}-${panel.label}-${panel.lottie}`}
+									<div
+										class="w-panel-media w-panel-lottie"
+										use:workPanelLottie={panel.lottie}
+										aria-hidden="true"
+									></div>
+								{/key}
 							{:else if panel.image}
 								<img
 									class="w-panel-media w-panel-media--image"
@@ -1675,10 +1708,6 @@
 	}
 	.w-panel-bg--video {
 		background-color: #f6f6f6;
-		background-image: var(--w-panel-placeholder-image, none);
-		background-position: center;
-		background-size: cover;
-		background-repeat: no-repeat;
 	}
 	.w-panel-bg--video:has(> iframe.w-panel-media),
 	.w-panel-bg--video:has(> video.w-panel-media) {
@@ -1712,6 +1741,19 @@
 	.w-panel-bg--video img.w-panel-media--image {
 		object-fit: cover;
 		pointer-events: none;
+	}
+	.w-panel-bg--video .w-panel-lottie {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		pointer-events: none;
+		overflow: hidden;
+	}
+	.w-panel-bg--video .w-panel-lottie :global(svg) {
+		width: 100%;
+		height: 100%;
+		display: block;
 	}
 	.w-panel-carousel {
 		position: absolute;
@@ -1810,6 +1852,7 @@
 		transition: transform 0.7s cubic-bezier(0.33, 0, 0.25, 1);
 	}
 	.w-panel-bg--video:has(> img.w-panel-media--image) .w-panel-label,
+	.w-panel-bg--video:has(> .w-panel-lottie) .w-panel-label,
 	.w-panel-bg--video:has(.w-panel-images) .w-panel-label {
 		color: var(--black);
 		text-shadow: none;
@@ -1839,6 +1882,9 @@
 		}
 		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-media {
 			transform: scale(1.06);
+		}
+		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-lottie {
+			transform: scale(1);
 		}
 		.work-strip:not(.grabbing) .w-panel:hover .w-panel-bg .w-panel-carousel-img {
 			transform: scale(1);
@@ -1908,7 +1954,15 @@
 		bottom: 12px;
 		left: 14px;
 		z-index: 2;
-		font-size: 14px;
+		font-family: var(--font-nav);
+		font-size: 12px;
+		font-weight: 500;
+		line-height: 1.3;
+		letter-spacing: 0;
+		font-synthesis: none;
+		font-feature-settings:
+			'liga' 1,
+			'kern' 1;
 		padding: 4px 10px;
 		border-radius: 999px;
 		background: rgba(246, 246, 246, 0.4);
@@ -2135,9 +2189,6 @@
 			white-space: normal;
 			max-width: none;
 		}
-		.w-panel-label {
-			font-size: 12px;
-		}
 		.w-panel-bg--video video.w-panel-media--file {
 			border-width: 6px;
 		}
@@ -2160,25 +2211,5 @@
 		.about-body {
 			grid-template-columns: 1fr;
 		}
-	}
-
-	/* File video + placeholder (e.g. sky): pseudo-layer behind the phone frame (all breakpoints) */
-	.w-panel-bg--has-placeholder.w-panel-bg--video:has(> video.w-panel-media--file) {
-		background-image: none;
-	}
-	.w-panel-bg--has-placeholder.w-panel-bg--video:has(> video.w-panel-media--file)::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		z-index: 0;
-		background-image: var(--w-panel-placeholder-image, none);
-		background-position: center;
-		background-size: cover;
-		background-repeat: no-repeat;
-		pointer-events: none;
-	}
-	.w-panel-bg--has-placeholder.w-panel-bg--video:has(> video.w-panel-media--file) video.w-panel-media--file {
-		position: relative;
-		z-index: 1;
 	}
 </style>
