@@ -431,11 +431,15 @@
 	/** Many thresholds so IO fires while scrolling (viewport root — reliable across browsers). */
 	const LOTTIE_IO_THRESHOLDS = Array.from({ length: 21 }, (_, i) => i / 20);
 
+	/** Home cover cards use ~80vw; 0.98 visible area is rare on phones — Lotties never played. */
+	const MOBILE_HOME_COVER_IO_RATIO = 0.68;
+	const MOBILE_HOME_COVER_IO_THRESHOLDS = [0, 0.4, MOBILE_HOME_COVER_IO_RATIO, 1];
+
 	function lottieIntersectsViewportEnough(e: IntersectionObserverEntry): boolean {
 		return e.isIntersecting && e.intersectionRatio > 0.02;
 	}
 
-	/** One-shot carousel Lotties: need a majority of the slide visible or they finish off-screen and show the last frame. */
+	/** One-shot carousel Lotties: need a majority of the slide visible in the carousel scrollport (or viewport for single-slide). */
 	const CAROUSEL_LOTTIE_MIN_RATIO = 0.48;
 
 	function lottieCarouselSlideVisible(e: IntersectionObserverEntry): boolean {
@@ -571,13 +575,14 @@
 					wasInView = true;
 				};
 
+				const track = node.closest('.w-panel-images');
 				io = new IntersectionObserver(
 					(entries) => {
 						const e = entries[0];
 						if (!e || !anim || cancelled) return;
 						syncFromIo(e);
 					},
-					{ root: null, threshold: LOTTIE_IO_THRESHOLDS }
+					{ root: track, threshold: LOTTIE_IO_THRESHOLDS }
 				);
 				io.observe(node);
 			});
@@ -808,81 +813,12 @@
 		};
 	}
 
-	/** Mobile: inner multi-image carousels compete with horizontal strip scroll — drive track scroll manually. */
-	function installWorkStripCarouselTouchScrollFix(strip: HTMLElement): () => void {
-		let activeTrack: HTMLElement | null = null;
-		let lastX = 0;
-		let lastY = 0;
-		let startX = 0;
-		let startY = 0;
-		let locked = false;
-
-		const isMobileCarousel = () =>
-			typeof window !== 'undefined' && window.matchMedia('(max-width: 800px)').matches;
-
-		const onStart = (e: TouchEvent) => {
-			if (!isMobileCarousel() || !e.touches[0]) return;
-			const t = (e.target as HTMLElement).closest('.w-panel-images') as HTMLElement | null;
-			if (!t) {
-				activeTrack = null;
-				return;
-			}
-			activeTrack = t;
-			lastX = startX = e.touches[0].clientX;
-			lastY = startY = e.touches[0].clientY;
-			locked = false;
-		};
-
-		const onMove = (e: TouchEvent) => {
-			if (!isMobileCarousel() || !activeTrack || !e.touches[0]) return;
-			const track = activeTrack;
-			const x = e.touches[0].clientX;
-			const y = e.touches[0].clientY;
-			const dx = lastX - x;
-			lastX = x;
-			lastY = y;
-			const max = Math.max(0, track.scrollWidth - track.clientWidth);
-			if (max < 2) return;
-
-			const totalDx = Math.abs(x - startX);
-			const totalDy = Math.abs(y - startY);
-			if (!locked && totalDx < 10 && totalDy < 10) return;
-			if (!locked && totalDy > totalDx) {
-				activeTrack = null;
-				return;
-			}
-			locked = true;
-			e.preventDefault();
-			track.scrollLeft = Math.max(0, Math.min(max, track.scrollLeft + dx));
-			syncCarouselArrows(track);
-		};
-
-		const reset = () => {
-			if (activeTrack) syncCarouselArrows(activeTrack);
-			activeTrack = null;
-			locked = false;
-		};
-
-		strip.addEventListener('touchstart', onStart, { capture: true, passive: true });
-		strip.addEventListener('touchmove', onMove, { capture: true, passive: false });
-		strip.addEventListener('touchend', reset, { capture: true });
-		strip.addEventListener('touchcancel', reset, { capture: true });
-
-		return () => {
-			strip.removeEventListener('touchstart', onStart, true);
-			strip.removeEventListener('touchmove', onMove, true);
-			strip.removeEventListener('touchend', reset, true);
-			strip.removeEventListener('touchcancel', reset, true);
-		};
-	}
-
 	onMount(() => {
 		const home = document.getElementById('strip-home');
 		const work = document.getElementById('strip-work');
 		let alicaneClockTimer: number | undefined;
 		let destroyHome: (() => void) | undefined;
 		let destroyWork: (() => void) | undefined;
-		let destroyWorkCarouselTouch: (() => void) | undefined;
 		let soberoObserver: IntersectionObserver | null = null;
 		let kwitObserver: IntersectionObserver | null = null;
 		let yazio01Observer: IntersectionObserver | null = null;
@@ -894,10 +830,7 @@
 		let removeYazio02HoverListeners: (() => void) | undefined;
 		let removeWelltechHoverListeners: (() => void) | undefined;
 		if (home) destroyHome = dragScroll(home);
-		if (work) {
-			destroyWork = dragScroll(work);
-			destroyWorkCarouselTouch = installWorkStripCarouselTouchScrollFix(work);
-		}
+		if (work) destroyWork = dragScroll(work);
 		if (soberoPanelEl) {
 			const onEnter = () => onSoberoHoverStart();
 			const onLeave = () => onSoberoHoverEnd();
@@ -954,7 +887,7 @@
 					if (!isCoarsePointerDevice()) return;
 					const entry = entries[0];
 					if (!entry) return;
-					if (entry.intersectionRatio >= 0.98) {
+					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
 						if (kwitMobileInView) return;
 						kwitMobileInView = true;
 						void playKwitAnimationOnce();
@@ -963,7 +896,7 @@
 					kwitMobileInView = false;
 					stopKwitAnimation();
 				},
-				{ threshold: [0, 0.98, 1] }
+				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			kwitObserver.observe(kwitPanelEl);
 		}
@@ -973,7 +906,7 @@
 					if (!isCoarsePointerDevice()) return;
 					const entry = entries[0];
 					if (!entry) return;
-					if (entry.intersectionRatio >= 0.98) {
+					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
 						if (soberoMobileInView) return;
 						soberoMobileInView = true;
 						void playSoberoAnimationOnce();
@@ -982,7 +915,7 @@
 					soberoMobileInView = false;
 					stopSoberoAnimation();
 				},
-				{ threshold: [0, 0.98, 1] }
+				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			soberoObserver.observe(soberoPanelEl);
 		}
@@ -992,7 +925,7 @@
 					if (!isCoarsePointerDevice()) return;
 					const entry = entries[0];
 					if (!entry) return;
-					if (entry.intersectionRatio >= 0.98) {
+					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
 						if (yazio01MobileInView) return;
 						yazio01MobileInView = true;
 						void playYazio01AnimationOnce();
@@ -1001,7 +934,7 @@
 					yazio01MobileInView = false;
 					stopYazio01Animation();
 				},
-				{ threshold: [0, 0.98, 1] }
+				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			yazio01Observer.observe(yazio01PanelEl);
 		}
@@ -1011,7 +944,7 @@
 					if (!isCoarsePointerDevice()) return;
 					const entry = entries[0];
 					if (!entry) return;
-					if (entry.intersectionRatio >= 0.98) {
+					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
 						if (yazio02MobileInView) return;
 						yazio02MobileInView = true;
 						void playYazio02AnimationOnce();
@@ -1020,7 +953,7 @@
 					yazio02MobileInView = false;
 					stopYazio02Animation();
 				},
-				{ threshold: [0, 0.98, 1] }
+				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			yazio02Observer.observe(yazio02PanelEl);
 		}
@@ -1030,9 +963,7 @@
 					if (!isCoarsePointerDevice()) return;
 					const entry = entries[0];
 					if (!entry) return;
-					// Last panel rarely reaches ~100% visibility on mobile due viewport and strip padding.
-					// Trigger once when it's mostly visible.
-					if (entry.intersectionRatio >= 0.85) {
+					if (entry.intersectionRatio >= MOBILE_HOME_COVER_IO_RATIO) {
 						if (welltechMobileInView) return;
 						welltechMobileInView = true;
 						void playWelltechAnimationOnce();
@@ -1041,7 +972,7 @@
 					welltechMobileInView = false;
 					stopWelltechAnimation();
 				},
-				{ threshold: [0, 0.85, 1] }
+				{ threshold: MOBILE_HOME_COVER_IO_THRESHOLDS }
 			);
 			welltechObserver.observe(welltechPanelEl);
 		}
@@ -1085,7 +1016,6 @@
 			if (alicaneClockTimer) window.clearInterval(alicaneClockTimer);
 			destroyHome?.();
 			destroyWork?.();
-			destroyWorkCarouselTouch?.();
 		};
 	});
 </script>
@@ -1604,8 +1534,10 @@
 				<button
 					type="button"
 					class="case-study-accordion-header"
+					id={`case-study-acc-h-${i}`}
 					data-acc-idx={i}
 					aria-expanded={caseStudyAccordionIndex === i}
+					aria-controls={`case-study-acc-p-${i}`}
 					onclick={() => toggleCaseStudyAccordion(i)}
 					onkeydown={(e) =>
 						caseStudyAccordionHeaderKeydown(
@@ -1614,30 +1546,28 @@
 							caseStudyAccordion!.sections.length
 						)}
 				>
-					<span>{section.heading}</span>
-					<svg class="case-study-acc-icon" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-						<circle cx="13" cy="13" r="12" stroke="currentColor" stroke-width="1.4" />
-						<line
-							x1="13"
-							y1="7.5"
-							x2="13"
-							y2="18.5"
+					<span class="case-study-accordion-heading">{section.heading}</span>
+					<svg
+						class="case-study-acc-disclosure"
+						viewBox="0 0 20 20"
+						fill="none"
+						aria-hidden="true"
+					>
+						<path
+							d="M7.5 5.5 12.5 10 7.5 14.5"
 							stroke="currentColor"
-							stroke-width="1.5"
+							stroke-width="1.65"
 							stroke-linecap="round"
-						/>
-						<line
-							x1="7.5"
-							y1="13"
-							x2="18.5"
-							y2="13"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
+							stroke-linejoin="round"
 						/>
 					</svg>
 				</button>
-				<div class="case-study-acc-body">
+				<div
+					class="case-study-acc-body"
+					id={`case-study-acc-p-${i}`}
+					role="region"
+					aria-labelledby={`case-study-acc-h-${i}`}
+				>
 					<div class="case-study-acc-body-inner">
 						{#each section.body.split(/\n\n+/) as para}
 							<p>{para}</p>
@@ -2676,6 +2606,9 @@
 		.w-panel-carousel-img {
 			scroll-snap-stop: normal;
 		}
+		.w-panel-carousel-slide--lottie {
+			scroll-snap-stop: normal;
+		}
 		.about-body {
 			grid-template-columns: 1fr;
 		}
@@ -2753,7 +2686,7 @@
 	.case-study-accordion-header {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
+		gap: 10px;
 		padding: 15px 16px;
 		cursor: pointer;
 		user-select: none;
@@ -2773,15 +2706,20 @@
 		outline-offset: -3px;
 		border-radius: 10px;
 	}
-	.case-study-acc-icon {
-		width: 22px;
-		height: 22px;
+	.case-study-accordion-heading {
+		flex: 1;
+		min-width: 0;
+		text-align: left;
+	}
+	.case-study-acc-disclosure {
+		width: 20px;
+		height: 20px;
 		flex-shrink: 0;
-		color: #999;
+		color: #6a6a6a;
 		transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 	}
-	.case-study-acc-item.open .case-study-acc-icon {
-		transform: rotate(45deg);
+	.case-study-acc-item.open .case-study-acc-disclosure {
+		transform: rotate(90deg);
 		color: #333;
 	}
 	.case-study-acc-body {
@@ -2902,7 +2840,7 @@
 	@media (prefers-reduced-motion: reduce) {
 		.case-study-panel,
 		.case-study-acc-body,
-		.case-study-acc-icon,
+		.case-study-acc-disclosure,
 		.case-study-acc-body-inner p,
 		.case-study-fab-icon span {
 			transition: none;
