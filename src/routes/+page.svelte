@@ -518,8 +518,6 @@
 		let moved = false;
 		let sx = 0;
 		let sl = 0;
-		let tx = 0;
-		let ts = 0;
 		let activeScroller: HTMLElement | null = null;
 
 		const onDown = (e: MouseEvent) => {
@@ -554,27 +552,11 @@
 			el.scrollLeft +=
 				(Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX) * 1.5;
 		};
-		const onTouchStart = (e: TouchEvent) => {
-			if ((e.target as HTMLElement).closest('.w-panel-carousel-btn')) {
-				activeScroller = null;
-				return;
-			}
-			activeScroller = el;
-			tx = e.touches[0].pageX;
-			ts = el.scrollLeft;
-		};
-		const onTouchMove = (e: TouchEvent) => {
-			if (!activeScroller) return;
-			activeScroller.scrollLeft = ts - (e.touches[0].pageX - tx) * 1.2;
-		};
-
 		el.addEventListener('mousedown', onDown);
 		document.addEventListener('mousemove', onMove);
 		document.addEventListener('mouseup', onUp);
 		el.addEventListener('click', onClick, true);
 		el.addEventListener('wheel', onWheel, { passive: false });
-		el.addEventListener('touchstart', onTouchStart, { passive: true });
-		el.addEventListener('touchmove', onTouchMove, { passive: true });
 
 		return () => {
 			el.removeEventListener('mousedown', onDown);
@@ -582,8 +564,6 @@
 			document.removeEventListener('mouseup', onUp);
 			el.removeEventListener('click', onClick, true);
 			el.removeEventListener('wheel', onWheel);
-			el.removeEventListener('touchstart', onTouchStart);
-			el.removeEventListener('touchmove', onTouchMove);
 		};
 	}
 
@@ -1082,7 +1062,6 @@
 					<div
 						class="w-panel"
 						class:w-panel--double={panel.size === 'double'}
-						class:w-panel--has-image={panel.image || (panel.images && panel.images.length > 0)}
 						style={`--panel-index: ${i};`}
 					>
 						<div
@@ -1564,6 +1543,8 @@
 		display: flex;
 		padding-left: var(--px);
 		cursor: grab;
+		-webkit-overflow-scrolling: touch;
+		touch-action: pan-x;
 	}
 	.work-strip {
 		display: flex;
@@ -1574,6 +1555,8 @@
 		padding-left: var(--px);
 		padding-bottom: var(--px);
 		cursor: grab;
+		-webkit-overflow-scrolling: touch;
+		touch-action: pan-x;
 	}
 	.home-strip::-webkit-scrollbar,
 	.work-strip::-webkit-scrollbar {
@@ -1801,9 +1784,9 @@
 		gap: 0;
 		overflow-x: auto;
 		overflow-y: hidden;
-		scroll-snap-type: x mandatory;
+		scroll-snap-type: x proximity;
 		scrollbar-width: none;
-		overscroll-behavior-x: none;
+		overscroll-behavior-x: auto;
 		touch-action: none;
 		pointer-events: none;
 	}
@@ -2128,12 +2111,6 @@
 		.h-panel,
 		.w-panel {
 			width: 80vw;
-		}
-		.w-panel.w-panel--has-image {
-			align-self: flex-start;
-			height: 62vw;
-			min-height: 260px;
-			max-height: 420px;
 		}
 		.w-panel--double {
 			width: calc((80vw * 1.6) + var(--px));
