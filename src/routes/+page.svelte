@@ -1197,7 +1197,7 @@
 					Work
 				</button>
 			<div class="nav-sub-links">
-				{#each Object.keys(PROJECTS) as proj}
+				{#each Object.keys(PROJECTS) as proj, mi}
 						<button
 							type="button"
 						class:current={activePage === 'work' && currentProject === proj}
@@ -1248,8 +1248,8 @@
 		<div class="mob-menu-inner">
 			<!-- Arnold: pt-12 text-24 primary stack -->
 			<nav class="mob-primary" aria-label="Case studies">
-				{#each Object.keys(PROJECTS) as proj}
-					<div class="mob-primary-row">
+				{#each Object.keys(PROJECTS) as proj, mi}
+					<div class="mob-primary-row" style={`--menu-i: ${mi};`}>
 						<button
 							type="button"
 							class="mob-primary-link"
@@ -1986,13 +1986,31 @@
 		opacity: 0;
 		visibility: hidden;
 		pointer-events: none;
-		transition: opacity 0.25s, visibility 0.25s;
+		transform: translateY(8px);
+		transition:
+			opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+			transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+			visibility 0s linear 0.32s;
 	}
 	.page.active {
 		z-index: 100;
 		opacity: 1;
 		visibility: visible;
 		pointer-events: auto;
+		transform: translateY(0);
+		transition-delay: 0s;
+	}
+	@media (min-width: 801px) {
+		.page {
+			transform: translateY(16px) scale(0.996);
+			transition:
+				opacity 0.34s cubic-bezier(0.22, 1, 0.36, 1),
+				transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+				visibility 0s linear 0.42s;
+		}
+		.page.active {
+			transform: translateY(0) scale(1);
+		}
 	}
 
 	#page-home {
@@ -2591,6 +2609,10 @@
 		pointer-events: auto;
 		transition: opacity 0.4s ease;
 	}
+	.mob-menu.open .mob-menu-inner {
+		opacity: 1;
+		transform: translateY(0);
+	}
 	.mob-menu-inner {
 		min-height: 100dvh;
 		min-height: 100vh;
@@ -2601,6 +2623,11 @@
 			max(var(--section-spacing), env(safe-area-inset-right, 0px));
 		padding-top: calc(var(--nav-h) + 3rem);
 		box-sizing: border-box;
+		opacity: 0;
+		transform: translateY(12px);
+		transition:
+			opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+			transform 0.36s cubic-bezier(0.22, 1, 0.36, 1);
 	}
 	.mob-menu-spacer {
 		flex: 1 1 auto;
@@ -2667,6 +2694,34 @@
 		text-decoration: underline;
 		text-decoration-thickness: 1px;
 		text-underline-offset: 3px;
+	}
+
+	.mob-primary-row,
+	.mob-secondary-row,
+	.mob-foot {
+		opacity: 0;
+		transform: translateY(8px);
+		transition:
+			opacity 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+			transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+	.mob-menu.open .mob-primary-row,
+	.mob-menu.open .mob-secondary-row,
+	.mob-menu.open .mob-foot {
+		opacity: 1;
+		transform: translateY(0);
+	}
+	.mob-menu.open .mob-primary-row {
+		transition-delay: calc(var(--menu-i, 0) * 22ms + 90ms);
+	}
+	.mob-menu.open .mob-secondary-row:nth-child(1) {
+		transition-delay: 280ms;
+	}
+	.mob-menu.open .mob-secondary-row:nth-child(2) {
+		transition-delay: 320ms;
+	}
+	.mob-menu.open .mob-foot {
+		transition-delay: 360ms;
 	}
 	.mob-foot {
 		flex-shrink: 0;
@@ -3016,8 +3071,18 @@
 		.case-study-acc-body,
 		.case-study-acc-disclosure,
 		.case-study-acc-body-inner p,
-		.case-study-fab-icon span {
+		.case-study-fab-icon span,
+		.page,
+		.mob-menu,
+		.mob-menu-inner,
+		.mob-primary-row,
+		.mob-secondary-row,
+		.mob-foot {
 			transition: none;
+			animation: none;
+		}
+		.page {
+			transform: none;
 		}
 	}
 </style>
