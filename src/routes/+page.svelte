@@ -1725,7 +1725,15 @@
 
 <div id="page-about" class="page" class:active={activePage === 'about'}>
 	<div class="about-body">
-		<div class="about-portrait"><span class="about-ph">YN</span></div>
+		<div class="about-portrait">
+			<img
+				class="about-portrait-img"
+				src="/assets/about-portrait.png"
+				alt="Portrait on a bicycle with a dog in a front carrier, on a path beside a green field"
+				loading="lazy"
+				decoding="async"
+			/>
+		</div>
 		<div class="about-bio">
 			<p>
 				I'm a graphic and brand designer with over 8 years of experience working with studios,
@@ -2528,15 +2536,16 @@
 	.about-portrait {
 		background: var(--cream);
 		aspect-ratio: 3 / 4;
-		display: flex;
-		align-items: center;
-		justify-content: center;
+		overflow: hidden;
+		border-radius: 12px;
+		position: relative;
 	}
-	.about-ph {
-		font-size: clamp(5rem, 14vw, 14rem);
-		color: rgba(0, 0, 0, 0.06);
-		letter-spacing: -0.05em;
-		user-select: none;
+	.about-portrait-img {
+		width: 100%;
+		height: 100%;
+		display: block;
+		object-fit: cover;
+		object-position: center 58%;
 	}
 	.about-bio p {
 		font-size: clamp(0.8125rem, 1.04vw, 0.9375rem);
